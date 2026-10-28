@@ -1,0 +1,12 @@
+<%- include('../partials/head') %>
+<section class="wrap section narrow prose">
+  <h1><%= heading %></h1>
+  <p>Sorularınız, siparişleriniz ve iade talepleriniz için bize ulaşabilirsiniz.</p>
+  <ul>
+    <li>Telefon: <a href="tel:<%= config.contact.phone.replace(/[^\d+]/g, '') %>"><%= config.contact.phone %></a></li>
+    <li>E-posta: <a href="mailto:<%= config.contact.email %>"><%= config.contact.email %></a></li>
+    <% if (config.contact.whatsapp) { %><li>WhatsApp: <a href="https://wa.me/<%= config.contact.whatsapp %>">Mesaj gönderin</a></li><% } %>
+  </ul>
+  <p class="muted">Çalışma saatleri: Hafta içi 09:00 – 18:00</p>
+</section>
+<%- include('../partials/foot') %>

@@ -1,0 +1,76 @@
+<%- include('_head') %>
+<% const fieldLabels = { price: 'Fiyat', compare_price: 'Eski fiyat', unit_cost: 'Maliyet', shipping_cost: 'Kargo maliyeti',
+     stage: 'Aşama', status: 'Durum', name: 'Ad', image: 'Görsel', olusturuldu: 'Oluşturuldu' };
+   const moneyFields = ['price', 'compare_price', 'unit_cost', 'shipping_cost'];
+   const showVal = (f, v) => v === null || v === '' ? '–' : moneyFields.includes(f) ? formatTRY(Number(v)) : f === 'stage' ? (config.stageLabels[v] || v) : v; %>
+<div class="page-head">
+  <h1><%= product.id ? product.name : 'Yeni ürün' %></h1>
+  <% if (product.id) { %><a class="btn btn-sm btn-dark" href="/urun/<%= product.slug %>" target="_blank">Sayfayı gör ↗</a><% } %>
+</div>
+<% if (typeof saved !== 'undefined' && saved) { %><div class="ok">Kaydedildi.</div><% } %>
+<% if (errors.length) { %><div class="alert"><ul><% errors.forEach(function (e) { %><li><%= e %></li><% }) %></ul></div><% } %>
+
+<form method="post" action="/yonetim/urunler<%= product.id ? '/' + product.id : '' %>" enctype="multipart/form-data" class="form form-wide">
+  <fieldset>
+    <legend>Satış ayarları</legend>
+    <div class="row-2">
+      <label>Aşama
+        <select name="stage"><% config.stages.forEach(function (s) { %><option value="<%= s %>" <%= product.stage === s ? 'selected' : '' %>><%= config.stageLabels[s] %></option><% }) %></select>
+      </label>
+      <label>Durum
+        <select name="status">
+          <option value="aktif" <%= product.status === 'aktif' ? 'selected' : '' %>>Aktif (satışta)</option>
+          <option value="pasif" <%= product.status === 'pasif' ? 'selected' : '' %>>Pasif (satıştan kaldırıldı)</option>
+        </select>
+      </label>
+    </div>
+    <div class="row-2">
+      <label>Satış fiyatı (₺) <input name="price" inputmode="decimal" required value="<%= toInput(product.price) %>" placeholder="899,90"></label>
+      <label>Eski fiyat (₺, üstü çizili) <input name="compare_price" inputmode="decimal" value="<%= toInput(product.compare_price) %>"></label>
+    </div>
+    <div class="row-2">
+      <label>Ürün maliyeti (₺, adet başı) <input name="unit_cost" inputmode="decimal" value="<%= toInput(product.unit_cost) %>"></label>
+      <label>Kargo maliyeti (₺, sipariş başı) <input name="shipping_cost" inputmode="decimal" value="<%= toInput(product.shipping_cost) %>"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Sayfa içeriği</legend>
+    <label>Ürün adı <input name="name" required value="<%= product.name %>"></label>
+    <label>Sayfa adresi <span class="muted small">(boş bırakılırsa addan üretilir)</span>
+      <input name="slug" value="<%= product.slug %>" placeholder="ornek-urun"></label>
+    <label>Başlık / slogan <input name="headline" value="<%= product.headline %>"></label>
+    <label>Açıklama <textarea name="description" rows="4"><%= product.description %></textarea></label>
+    <label>Öne çıkan özellikler <span class="muted small">(her satıra bir tane)</span>
+      <textarea name="features" rows="4"><%= product.features %></textarea></label>
+    <label>Sıkça sorulan sorular <span class="muted small">(her satır: Soru | Cevap)</span>
+      <textarea name="faq" rows="4"><%= product.faq %></textarea></label>
+    <label>Sıra <input name="sort_order" type="number" value="<%= product.sort_order %>"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Görsel</legend>
+    <% if (product.image) { %><img class="preview" src="<%= product.image %>" alt=""><% } %>
+    <label>Yeni görsel yükle (JPG, PNG, WEBP – en fazla 3 MB) <input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
+    <label>veya görsel adresi <input name="image_url" value="<%= product.image %>"></label>
+  </fieldset>
+
+  <button class="btn btn-lg">Kaydet</button>
+</form>
+
+<% if (history.length) { %>
+<h2>Değişiklik geçmişi</h2>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Tarih</th><th>Alan</th><th>Eski</th><th>Yeni</th></tr></thead>
+  <tbody>
+  <% history.forEach(function (h) { %>
+    <tr><td><%= formatDateTime(h.changed_at) %></td><td><%= fieldLabels[h.field] || h.field %></td>
+      <td><%= h.field === 'olusturuldu' ? '' : showVal(h.field, h.old_value) %></td>
+      <td><%= h.field === 'olusturuldu' ? '' : showVal(h.field, h.new_value) %></td></tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<% } %>
+<%- include('_foot') %>

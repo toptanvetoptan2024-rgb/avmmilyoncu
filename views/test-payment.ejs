@@ -1,0 +1,20 @@
+<%- include('partials/head') %>
+<section class="wrap section narrow">
+  <div class="notice">
+    <h1>Test ödeme ekranı</h1>
+    <p>Bu ekran yalnızca test içindir. Gerçek kart bilgisi girilmez, para çekilmez.</p>
+    <dl class="summary">
+      <dt>Sipariş no</dt><dd><%= order.order_no %></dd>
+      <dt>Tutar</dt><dd><%= formatTRY(order.total) %></dd>
+    </dl>
+    <% if (order.payment_status === 'bekliyor') { %>
+    <form method="post" class="btn-row">
+      <button class="btn" name="sonuc" value="basarili">Ödeme başarılı</button>
+      <button class="btn btn-dark" name="sonuc" value="basarisiz">Ödeme başarısız</button>
+    </form>
+    <% } else { %>
+      <a class="btn" href="/siparis/<%= order.order_no %>">Siparişe git</a>
+    <% } %>
+  </div>
+</section>
+<%- include('partials/foot') %>

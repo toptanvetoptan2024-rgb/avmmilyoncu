@@ -1,0 +1,114 @@
+<%- include('partials/head', { ogImage: product.image ? config.siteUrl + product.image : '' }) %>
+<% const active = product.status === 'aktif';
+   const discount = product.compare_price && product.compare_price > product.price
+     ? Math.round((1 - product.price / product.compare_price) * 100) : 0; %>
+
+<% if (!active) { %>
+<section class="wrap section">
+  <div class="notice">
+    <h1><%= product.name %></h1>
+    <p>Bu ürün şu an satışta değil. Aşağıdaki ürünlerimize göz atabilirsiniz.</p>
+  </div>
+  <div class="grid">
+    <% others.forEach(function (p) { %><%- include('partials/card', { p }) %><% }) %>
+  </div>
+</section>
+<% } else { %>
+
+<section class="product-hero wrap">
+  <div class="product-media">
+    <% if (discount) { %><span class="ribbon">%<%= discount %> indirim</span><% } %>
+    <img src="<%= product.image || '/img/placeholder.svg' %>" alt="<%= product.name %>" width="600" height="600" fetchpriority="high">
+  </div>
+  <div class="product-info">
+    <h1><%= product.name %></h1>
+    <% if (product.headline) { %><p class="headline"><%= product.headline %></p><% } %>
+    <div class="price-row big">
+      <span class="price"><%= formatTRY(product.price) %></span>
+      <% if (discount) { %><s class="old"><%= formatTRY(product.compare_price) %></s><% } %>
+    </div>
+    <ul class="features">
+      <% lines(product.features).forEach(function (f) { %><li><%= f %></li><% }) %>
+    </ul>
+    <a href="#siparis" class="btn btn-block btn-lg">Hemen Sipariş Ver</a>
+    <%- include('partials/badges') %>
+  </div>
+</section>
+
+<% if (product.description) { %>
+<section class="wrap section">
+  <h2 class="section-title">Ürün hakkında</h2>
+  <div class="prose"><% lines(product.description).forEach(function (l) { %><p><%= l %></p><% }) %></div>
+</section>
+<% } %>
+
+<section class="wrap section" id="siparis">
+  <div class="order-box">
+    <h2>Sipariş formu</h2>
+    <p class="muted">Formu doldurun, siparişinizi telefonla teyit edelim.</p>
+    <% if (errors.length) { %>
+      <div class="alert" role="alert"><ul><% errors.forEach(function (e) { %><li><%= e %></li><% }) %></ul></div>
+    <% } %>
+    <form method="post" action="/siparis#siparis" class="form" id="order-form" novalidate>
+      <input type="hidden" name="product_id" value="<%= product.id %>">
+      <div class="hp" aria-hidden="true"><label>Web sitesi <input name="website" tabindex="-1" autocomplete="off"></label></div>
+
+      <label>Adet
+        <select name="quantity" id="qty" data-price="<%= product.price %>">
+          <% for (let i = 1; i <= 5; i++) { %><option value="<%= i %>" <%= Number(form.quantity) === i ? 'selected' : '' %>><%= i %></option><% } %>
+        </select>
+      </label>
+      <label>Ad Soyad <input name="customer_name" required autocomplete="name" value="<%= form.customer_name || '' %>"></label>
+      <label>Cep telefonu <input name="phone" type="tel" inputmode="tel" required autocomplete="tel" placeholder="05xx xxx xx xx" value="<%= form.phone || '' %>"></label>
+      <div class="row-2">
+        <label>İl <input name="city" required autocomplete="address-level1" value="<%= form.city || '' %>"></label>
+        <label>İlçe <input name="district" autocomplete="address-level2" value="<%= form.district || '' %>"></label>
+      </div>
+      <label>Açık adres <textarea name="address" rows="3" required autocomplete="street-address"><%= form.address || '' %></textarea></label>
+      <label>Sipariş notu (isteğe bağlı) <input name="note" value="<%= form.note || '' %>"></label>
+
+      <fieldset class="pay">
+        <legend>Ödeme yöntemi</legend>
+        <% Object.keys(methods).forEach(function (k) { %>
+          <label class="radio"><input type="radio" name="payment_method" value="<%= k %>" <%= form.payment_method === k ? 'checked' : '' %>> <%= methods[k] %></label>
+        <% }) %>
+      </fieldset>
+
+      <label class="check"><input type="checkbox" name="onay" value="1" <%= form.onay ? 'checked' : '' %>>
+        <span><a href="/mesafeli-satis-sozlesmesi" target="_blank">Mesafeli satış sözleşmesini</a> okudum, onaylıyorum.</span></label>
+
+      <div class="total">Toplam: <strong id="total"><%= formatTRY(product.price * (Number(form.quantity) || 1)) %></strong></div>
+      <button class="btn btn-block btn-lg" type="submit">Siparişi Tamamla</button>
+    </form>
+  </div>
+</section>
+
+<% const faq = faqItems(product.faq); if (faq.length) { %>
+<section class="wrap section">
+  <h2 class="section-title">Sıkça sorulan sorular</h2>
+  <div class="faq">
+    <% faq.forEach(function (f) { %><details><summary><%= f.q %></summary><p><%= f.a %></p></details><% }) %>
+  </div>
+</section>
+<% } %>
+
+<% if (others.length) { %>
+<section class="wrap section">
+  <h2 class="section-title">Diğer ürünler</h2>
+  <div class="grid"><% others.forEach(function (p) { %><%- include('partials/card', { p }) %><% }) %></div>
+</section>
+<% } %>
+
+<div class="sticky-cta">
+  <div><span class="price"><%= formatTRY(product.price) %></span><% if (discount) { %> <s class="old"><%= formatTRY(product.compare_price) %></s><% } %></div>
+  <a href="#siparis" class="btn">Sipariş Ver</a>
+</div>
+<script>
+  (function () {
+    var q = document.getElementById('qty'), t = document.getElementById('total');
+    var f = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
+    q.addEventListener('change', function () { t.textContent = f.format(q.dataset.price * q.value / 100); });
+  })();
+</script>
+<% } %>
+<%- include('partials/foot') %>

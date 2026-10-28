@@ -1,0 +1,26 @@
+<%- include('_head') %>
+<div class="page-head">
+  <h1>Ürünler</h1>
+  <a class="btn btn-sm" href="/yonetim/urunler/yeni">+ Yeni ürün</a>
+</div>
+<p class="muted small">Ürünler silinmez. Satıştan kaldırmak için ürünü açıp durumunu "Pasif" yapın; geçmişi ve siparişleri korunur.</p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th></th><th>Ürün</th><th>Aşama</th><th>Durum</th><th>Fiyat</th><th>Maliyet</th><th>Kargo</th><th>Birim brüt kâr</th></tr></thead>
+  <tbody>
+  <% products.forEach(function (p) { %>
+    <tr class="<%= p.status === 'pasif' ? 'dim' : '' %>">
+      <td><img class="thumb" src="<%= p.image || '/img/placeholder.svg' %>" alt=""></td>
+      <td><a href="/yonetim/urunler/<%= p.id %>"><%= p.name %></a><br><span class="muted small">/urun/<%= p.slug %></span></td>
+      <td><span class="tag tag-<%= p.stage %>"><%= config.stageLabels[p.stage] %></span></td>
+      <td><span class="tag tag-<%= p.status %>"><%= p.status === 'aktif' ? 'Aktif' : 'Pasif' %></span></td>
+      <td><%= formatTRY(p.price) %></td>
+      <td><%= formatTRY(p.unit_cost) %></td>
+      <td><%= formatTRY(p.shipping_cost) %></td>
+      <td><%= formatTRY(p.price - p.unit_cost - p.shipping_cost) %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<%- include('_foot') %>

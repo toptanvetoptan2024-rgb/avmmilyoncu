@@ -1,0 +1,84 @@
+<%- include('_head') %>
+<% const pct = (x) => x === null ? '–' : '%' + (x * 100).toFixed(1).replace('.', ',');
+   const num = (x, d) => x === null ? '–' : x.toFixed(d).replace('.', ',');
+   const money = (x) => x === null ? '–' : formatTRY(x);
+   const cls = (x) => x > 0 ? 'pos' : x < 0 ? 'neg' : ''; %>
+<div class="page-head">
+  <h1>Panel</h1>
+  <% if (newOrders) { %><a class="btn btn-sm" href="/yonetim/siparisler?durum=yeni"><%= newOrders %> yeni sipariş</a><% } %>
+</div>
+
+<form class="filters" method="get">
+  <% [['bugun','Bugün'],['7','7 gün'],['30','30 gün'],['90','90 gün'],['tumu','Tümü']].forEach(function (o) { %>
+    <a class="chip <%= range.preset === o[0] ? 'on' : '' %>" href="?aralik=<%= o[0] %>"><%= o[1] %></a>
+  <% }) %>
+  <span class="inline">
+    <input type="date" name="baslangic" value="<%= range.from === '2000-01-01' ? '' : range.from %>">
+    <input type="date" name="bitis" value="<%= range.to %>">
+    <button class="btn btn-sm btn-dark">Uygula</button>
+  </span>
+</form>
+
+<div class="kpis">
+  <div class="kpi"><span>Reklam harcaması</span><strong><%= formatTRY(report.total.spend) %></strong></div>
+  <div class="kpi"><span>Ciro</span><strong><%= formatTRY(report.total.revenue) %></strong></div>
+  <div class="kpi"><span>Geçerli sipariş</span><strong><%= report.total.valid_orders %></strong></div>
+  <div class="kpi"><span>ROAS</span><strong><%= num(report.total.roas, 2) %></strong></div>
+  <div class="kpi"><span>Net kâr</span><strong class="<%= cls(report.total.net_profit) %>"><%= formatTRY(report.total.net_profit) %></strong></div>
+</div>
+
+<h2>Ürün performansı</h2>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr>
+    <th>Ürün</th><th>Aşama</th><th>Ziyaret</th><th>Reklam</th><th>Sipariş</th><th>İptal/İade</th>
+    <th>Dönüşüm</th><th>Ciro</th><th>Maliyet+Kargo</th><th>Sipariş başı rek.</th><th>ROAS</th><th>Net kâr</th><th>Öneri</th>
+  </tr></thead>
+  <tbody>
+  <% report.rows.forEach(function (r) { if (r.status === 'pasif' && !r.orders && !r.spend) return; %>
+    <tr class="<%= r.status === 'pasif' ? 'dim' : '' %>">
+      <td><a href="/yonetim/urunler/<%= r.id %>"><%= r.name %></a></td>
+      <td><span class="tag tag-<%= r.status === 'pasif' ? 'pasif' : r.stage %>"><%= r.status === 'pasif' ? 'Pasif' : config.stageLabels[r.stage] %></span></td>
+      <td><%= r.views %></td>
+      <td><%= formatTRY(r.spend) %></td>
+      <td><%= r.valid_orders %></td>
+      <td><%= r.lost_orders %></td>
+      <td><%= pct(r.conversion) %></td>
+      <td><%= formatTRY(r.revenue) %></td>
+      <td><%= formatTRY(r.cogs + r.shipping) %></td>
+      <td><%= money(r.cpa) %></td>
+      <td><%= num(r.roas, 2) %></td>
+      <td class="<%= cls(r.net_profit) %>"><strong><%= formatTRY(r.net_profit) %></strong></td>
+      <td class="small"><%= suggestion(r) %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<p class="muted small">Net kâr = Ciro − ürün maliyeti − kargo − reklam. İptal ve iadeler ciroya girmez; iadelerin kargo maliyeti düşülür. Test siparişleri sayılmaz.</p>
+
+<h2>Ürün yuvaları</h2>
+<div class="slots">
+  <% config.stages.forEach(function (s) { %>
+    <div class="slot-col">
+      <h3><%= config.stageLabels[s] %> <span class="muted">(<%= slots[s].length %>/<%= config.maxPerStage %>)</span></h3>
+      <% slots[s].forEach(function (p) { %><a class="slot" href="/yonetim/urunler/<%= p.id %>"><%= p.name %></a><% }) %>
+      <% for (let i = slots[s].length; i < config.maxPerStage; i++) { %><a class="slot empty" href="/yonetim/urunler/yeni">+ Boş yuva</a><% } %>
+    </div>
+  <% }) %>
+</div>
+
+<h2>Günlük</h2>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Tarih</th><th>Reklam</th><th>Sipariş</th><th>Ciro</th><th>Net kâr</th></tr></thead>
+  <tbody>
+  <% if (!daily.length) { %><tr><td colspan="5" class="muted">Bu aralıkta veri yok.</td></tr><% } %>
+  <% daily.forEach(function (d) { %>
+    <tr><td><%= d.date %></td><td><%= formatTRY(d.spend) %></td><td><%= d.orders %></td><td><%= formatTRY(d.revenue) %></td>
+      <td class="<%= cls(d.net_profit) %>"><%= formatTRY(d.net_profit) %></td></tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<%- include('_foot') %>
