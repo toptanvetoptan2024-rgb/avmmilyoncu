@@ -36,6 +36,7 @@ export function adminLayout(ctx, { title, path, hideNav }, body) {
     <a href="/" target="_blank">Siteyi gör ↗</a>
   </nav>`}
 </header>
+${!hideNav && ctx.rt.tempPassword ? html`<div class="test-bar warn-bar">Geçici yönetim şifresi kullanılıyor. Güvenlik için yakında kendi şifrenize geçin.</div>` : ''}
 ${ctx.testMode ? html`<div class="test-bar">TEST MODU – kart ödemeleri simülasyon. Canlı ödeme için PAYMENT_MODE=live ve gerçek sağlayıcı gerekir.</div>` : ''}
 <main class="wrap section">
 ${body}

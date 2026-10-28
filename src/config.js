@@ -20,11 +20,18 @@ export const LOST_STATUSES = ['iade', 'iptal'];
 export const PAYMENT_METHODS = { kapida: 'Kapıda ödeme', kart: 'Kredi / banka kartı' };
 export const PAYMENT_STATUS_LABELS = { bekliyor: 'Bekliyor', odendi: 'Ödendi', basarisiz: 'Başarısız' };
 
+// GEÇİCİ başlangıç şifresi. Depo herkese açıkken bu şifreyi herkes görebilir!
+// Güvenli hale getirmek için: Cloudflare'de ADMIN_PASSWORD gizli değerini ekleyin,
+// ardından bu satırı boş ('') yapın.
+export const TEMP_ADMIN_PASSWORD = 'Avm123';
+
 // Cloudflare panelindeki ayarlardan (değişkenler ve gizli değerler) okunan değerler.
 export function runtime(env = {}) {
   return {
     adminPassword: env.ADMIN_PASSWORD || '',
-    sessionSecret: env.SESSION_SECRET || env.ADMIN_PASSWORD || '',
+    tempPassword: TEMP_ADMIN_PASSWORD,
+    // Oturum imzası; şifre değişince eski oturumlar geçersiz olur.
+    sessionSecret: env.SESSION_SECRET || `${env.ADMIN_PASSWORD || ''}|${TEMP_ADMIN_PASSWORD}`,
     // "test": kartla ödeme simüle edilir, gerçek para çekilmez.
     // "live": gerçek ödeme sağlayıcısı gerekir (henüz bağlı değil).
     paymentMode: env.PAYMENT_MODE === 'live' ? 'live' : 'test',
