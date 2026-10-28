@@ -2,14 +2,11 @@ import { Hono } from 'hono';
 import { STAGES, ORDER_STATUSES, AD_CHANNELS, PAYMENT_STATUS_LABELS } from '../config.js';
 import { parseTRY } from '../money.js';
 import { todayTR, daysAgoTR, isDate } from '../time.js';
-import { slugify } from '../products.js';
 import { productReport, dailySeries, suggestion } from '../reports.js';
 import { all } from '../db.js';
 import * as auth from '../auth.js';
 import * as v from '../views/admin.js';
 
-const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
-const MAX_IMAGE = 3 * 1024 * 1024;
 
 export const admin = new Hono();
 
@@ -25,7 +22,7 @@ const out = (c, page, status = 200) => c.html(page.toString(), status);
 // Basit deneme sınırı (her Cloudflare sunucusu için ayrı tutulur).
 const attempts = new Map();
 
-const noPassword = (rt) => !rt.adminPassword && !rt.tempPassword;
+const noPassword = (rt) => !rt.adminPassword;
 
 admin.get('/giris', (c) => out(c, v.loginPage(c.get('ctx'), '', noPassword(c.get('ctx').rt))));
 
@@ -38,9 +35,7 @@ admin.post('/giris', async (c) => {
   if (a.n >= 10) return out(c, v.loginPage(c.get('ctx'), 'Çok fazla deneme. 15 dakika sonra tekrar deneyin.'), 429);
   const body = await c.req.parseBody();
   const given = String(body.password || '').trim();
-  const okMain = rt.adminPassword && await auth.safeEqual(given, rt.adminPassword.trim());
-  const okTemp = rt.tempPassword && await auth.safeEqual(given, rt.tempPassword);
-  if (okMain || okTemp) {
+  if (await auth.safeEqual(given, rt.adminPassword)) {
     attempts.delete(ip);
     await auth.login(c, rt.sessionSecret);
     return c.redirect('/yonetim', 302);
@@ -88,13 +83,6 @@ admin.get('/', async (c) => {
 // --- Ürünler ---
 admin.get('/urunler', async (c) => out(c, v.productsPage(c.get('ctx'), await c.get('s').products.listAll())));
 
-const emptyProduct = {
-  id: null, slug: '', name: '', headline: '', description: '', features: '', faq: '', price: null,
-  compare_price: null, unit_cost: 0, shipping_cost: 0, image: '', stage: 'test', status: 'aktif', sort_order: 0,
-};
-
-admin.get('/urunler/yeni', (c) => out(c, v.productFormPage(c.get('ctx'), { product: emptyProduct, history: [], errors: [] })));
-
 admin.get('/urunler/:id', async (c) => {
   const s = c.get('s');
   const product = await s.products.getById(c.req.param('id'));
@@ -104,59 +92,18 @@ admin.get('/urunler/:id', async (c) => {
   }));
 });
 
-async function saveProduct(c, id) {
-  const s = c.get('s');
-  const b = await c.req.parseBody();
-  const data = {
-    name: String(b.name || '').trim(),
-    slug: slugify(b.slug || b.name || ''),
-    headline: String(b.headline || '').trim(),
-    description: String(b.description || '').trim(),
-    features: String(b.features || '').trim(),
-    faq: String(b.faq || '').trim(),
-    price: parseTRY(b.price),
-    compare_price: parseTRY(b.compare_price),
-    unit_cost: parseTRY(b.unit_cost) ?? 0,
-    shipping_cost: parseTRY(b.shipping_cost) ?? 0,
-    stage: b.stage,
-    status: b.status,
-    sort_order: Number.parseInt(b.sort_order, 10) || 0,
-  };
-  const errors = [];
-  const file = b.image_file;
-  const hasFile = file && typeof file === 'object' && file.size > 0;
-  if (hasFile) {
-    if (!IMAGE_TYPES[file.type]) errors.push('Görsel JPG, PNG veya WEBP olmalı.');
-    else if (file.size > MAX_IMAGE) errors.push('Görsel en fazla 3 MB olabilir.');
-    else if (!c.env.IMAGES) errors.push('Görsel deposu (IMAGES) bağlı değil.');
-  } else if (b.image_url !== undefined) {
-    data.image = String(b.image_url).trim();
-  }
-
-  let result = errors.length ? { errors } : null;
-  if (!result) {
-    if (hasFile) {
-      const rand = [...crypto.getRandomValues(new Uint8Array(4))].map((x) => x.toString(16).padStart(2, '0')).join('');
-      const key = `${Date.now()}-${rand}${IMAGE_TYPES[file.type]}`;
-      await c.env.IMAGES.put(key, await file.arrayBuffer(), { metadata: { type: file.type } });
-      data.image = `/uploads/${key}`;
-    }
-    result = id ? await s.products.update(id, data) : await s.products.create(data);
-  }
-  if (result.errors) {
-    const current = id ? await s.products.getById(id) : emptyProduct;
-    return out(c, v.productFormPage(c.get('ctx'), {
-      product: { ...current, ...data, id }, history: id ? await s.products.history(id) : [], errors: result.errors,
-    }), 400);
-  }
-  return c.redirect(`/yonetim/urunler/${result.id}?kaydedildi=1`, 303);
-}
-
-admin.post('/urunler', (c) => saveProduct(c, null));
 admin.post('/urunler/:id', async (c) => {
+  const s = c.get('s');
   const id = Number(c.req.param('id'));
-  if (!(await c.get('s').products.getById(id))) return c.notFound();
-  return saveProduct(c, id);
+  if (!(await s.products.getById(id))) return c.notFound();
+  const b = await c.req.parseBody();
+  const data = { stage: b.stage, unit_cost: parseTRY(b.unit_cost) ?? 0, shipping_cost: parseTRY(b.shipping_cost) ?? 0 };
+  const result = await s.products.update(id, data);
+  if (result.errors) {
+    const product = { ...(await s.products.getById(id)), ...data };
+    return out(c, v.productFormPage(c.get('ctx'), { product, history: await s.products.history(id), errors: result.errors }), 400);
+  }
+  return c.redirect(`/yonetim/urunler/${id}?kaydedildi=1`, 303);
 });
 
 // --- Siparişler ---
@@ -174,10 +121,10 @@ admin.get('/siparisler', async (c) => {
 
 admin.get('/siparisler.csv', async (c) => {
   const rows = await c.get('s').orders.list({ includeTest: c.req.query('test') === '1', limit: 100000 });
-  const cols = ['order_no', 'created_at', 'product_name', 'quantity', 'unit_price', 'unit_cost', 'shipping_cost', 'total',
-    'status', 'payment_method', 'payment_status', 'is_test', 'customer_name', 'phone', 'city', 'district', 'address', 'note',
-    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
-  const money = new Set(['unit_price', 'unit_cost', 'shipping_cost', 'total']);
+  const cols = ['order_no', 'created_at', 'product_name', 'quantity', 'subtotal', 'shipping_fee', 'total', 'shipping_cost',
+    'status', 'payment_method', 'payment_status', 'is_test', 'first_name', 'last_name', 'phone', 'email', 'city', 'district',
+    'neighborhood', 'address', 'postal_code', 'note', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+  const money = new Set(['subtotal', 'shipping_fee', 'total', 'shipping_cost']);
   const esc = (val) => {
     let str = String(val ?? '');
     if (/^[=+\-@]/.test(str)) str = "'" + str; // Excel formül enjeksiyonunu önle
@@ -194,7 +141,7 @@ admin.get('/siparisler/:id', async (c) => {
   const s = c.get('s');
   const order = await s.orders.getById(c.req.param('id'));
   if (!order) return c.notFound();
-  return out(c, v.orderPage(c.get('ctx'), { order, events: await s.orders.events(order.id) }));
+  return out(c, v.orderPage(c.get('ctx'), { order, items: await s.orders.items(order.id), events: await s.orders.events(order.id) }));
 });
 
 admin.post('/siparisler/:id', async (c) => {

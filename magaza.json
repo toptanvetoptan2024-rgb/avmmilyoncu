@@ -1,0 +1,16 @@
+{
+  "_aciklama": "Mağaza ayarları. 'kapidaOdeme' yalnızca kargo firmanızla kapıda ödeme anlaşmanız onaylandıktan sonra true yapılmalıdır; false iken sipariş alınmaz. Kart ödemesi gerçek bir sanal POS bağlanana kadar kapalıdır. 'musteriKargoUcreti' müşteriden alınan kargo ücretidir (TL, 0 = ücretsiz). İletişim bilgileri boş bırakılırsa sitede gösterilmez.",
+  "iletisim": {
+    "telefon": "",
+    "eposta": "",
+    "whatsapp": ""
+  },
+  "odeme": {
+    "kapidaOdeme": false,
+    "kapidaOdemeAciklama": "Nakit veya kredi kartı ile kapıda ödeme"
+  },
+  "kargo": {
+    "musteriKargoUcreti": 0,
+    "teslimSuresi": "Siparişiniz 1-3 iş günü içinde kargoda"
+  }
+}

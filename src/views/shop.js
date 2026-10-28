@@ -1,241 +1,255 @@
-import { html } from '../html.js';
+import { html, raw } from '../html.js';
 import { formatTRY } from '../money.js';
-import { lines, faqItems } from '../products.js';
-import { PAYMENT_METHODS, SITE_NAME } from '../config.js';
+import { SITE_NAME } from '../config.js';
+import { STOCK_LABELS, MAX_SHOWN } from '../catalog.js';
+import { ILLER } from '../iller.js';
+import { MAX_QTY } from '../orders.js';
 
-// ctx: { rt (ayarlar), testMode }
+// ctx: { rt (ortam ayarları), store (magaza.json ayarları) }
 
-export function layout(ctx, { title, description, ogImage }, body) {
-  const phoneHref = ctx.rt.contact.phone.replace(/[^\d+]/g, '');
+const ICONS = {
+  truck: '<path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+  shield: '<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  box: '<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>',
+  headset: '<path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>',
+  lock: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>',
+  return: '<path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 010 10h-3"/>',
+  cart: '<path d="M3 4h2l2.4 11h10.2L20 7H6.2"/><circle cx="9" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
+};
+export const icon = (name, cls = 'ico') => raw(`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`);
+
+const brand = html`<a href="/" class="brand" aria-label="AVM Milyoncu ana sayfa">
+  <span class="brand-bag">AVM</span>
+  <span class="brand-text"><span class="brand-name">MİLYONCU</span><span class="brand-tag">Çok Satan Ürünler, Avantajlı Fiyatlar</span></span>
+</a>`;
+
+function trustItems(ctx) {
+  const c = ctx.store.contact;
+  const support = c.whatsapp ? 'WhatsApp ve telefonla' : c.phone ? 'Telefonla yanınızdayız' : 'Sorularınız için yazın';
+  return [
+    ['truck', 'Hızlı Kargo', "Türkiye'nin her yerine"],
+    ['shield', 'Güvenli Alışveriş', 'Bilgileriniz şifreli bağlantıyla korunur'],
+    ['tag', 'Uygun Fiyatlar', 'Avantajlı kampanya fiyatları'],
+    ['headset', 'Destek', support],
+  ];
+}
+
+export function layout(ctx, { title, description }, body) {
+  const c = ctx.store.contact;
   return html`<!doctype html>
 <html lang="tr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${title || SITE_NAME}</title>
-  <meta name="description" content="${description || 'AVM Milyoncu – popüler ürünler, uygun fiyat, kapıda ödeme.'}">
-  <meta name="theme-color" content="#2B2F33">
+  <title>${title || `${SITE_NAME} – Çok Satan Ürünler, Avantajlı Fiyatlar`}</title>
+  <meta name="description" content="${description || 'AVM Milyoncu: çok satan ürünler, avantajlı fiyatlar, hızlı kargo.'}">
+  <meta name="theme-color" content="#111111">
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css">
-  ${ogImage ? html`<meta property="og:title" content="${title}">
-  <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${ogImage}">` : ''}
+  <link rel="stylesheet" href="/css/style.css?v=4">
 </head>
 <body>
-${ctx.testMode ? html`<div class="test-bar">TEST MODU – kartla ödeme simülasyondur, gerçek para çekilmez.</div>` : ''}
-<header class="site-header">
-  <div class="wrap header-inner">
-    <a href="/" class="logo" aria-label="AVM Milyoncu ana sayfa"><span class="logo-mark">AVM</span><span class="logo-text">Milyoncu</span></a>
-    <a class="header-contact" href="tel:${phoneHref}">${ctx.rt.contact.phone}</a>
+<div class="topbar"><div class="wrap topbar-in">
+  ${trustItems(ctx).map(([i, t, d]) => html`<div class="tb-item">${icon(i)}<div><strong>${t}</strong><span>${d}</span></div></div>`)}
+</div></div>
+<header class="header"><div class="wrap header-in">
+  <details class="menu">
+    <summary aria-label="Menü">${icon('menu')}</summary>
+    <nav class="menu-list">
+      <a href="/#urunler">Ürünler</a>
+      <a href="/#sepet">Sepetim</a>
+      <a href="/iletisim">İletişim</a>
+      <a href="/iade-ve-degisim">İade ve Değişim</a>
+    </nav>
+  </details>
+  ${brand}
+  <div class="header-badges">
+    <div>${icon('lock')}<span>Güvenli Alışveriş</span></div>
+    <div>${icon('truck')}<span>Hızlı Kargo</span></div>
+    <div>${icon('return')}<span>Kolay İade</span></div>
   </div>
-</header>
+  <a href="/#sepet" class="cart-btn" aria-label="Sepet">${icon('cart')}<span class="cart-count" data-cart-count hidden>0</span></a>
+</div></header>
 <main>
 ${body}
 </main>
-<footer class="site-footer">
-  <div class="wrap footer-inner">
-    <div>
-      <div class="logo logo-light"><span class="logo-mark">AVM</span><span class="logo-text">Milyoncu</span></div>
-      <p class="muted">Popüler ürünler, uygun fiyat, kapıda ödeme.</p>
-    </div>
-    <nav class="footer-links">
+<footer class="footer">
+  <div class="wrap footer-trust">
+    ${[['truck', 'Hızlı Kargo', "Türkiye'nin her yerine"], ['shield', 'Güvenli Alışveriş', 'Şifreli bağlantı'],
+    ['box', 'Kolay İade', '14 gün içinde iade hakkı'], ['headset', 'Destek', c.phone || c.email || 'İletişim sayfamızdan ulaşın']]
+    .map(([i, t, d]) => html`<div class="ft-item">${icon(i)}<div><strong>${t}</strong><span>${d}</span></div></div>`)}
+  </div>
+  <div class="footer-bottom"><div class="wrap footer-bottom-in">
+    <span>© ${new Date().getFullYear()} avmmilyoncu.com</span>
+    <nav>
       <a href="/iletisim">İletişim</a>
       <a href="/iade-ve-degisim">İade ve Değişim</a>
       <a href="/mesafeli-satis-sozlesmesi">Mesafeli Satış Sözleşmesi</a>
       <a href="/gizlilik-ve-kvkk">Gizlilik ve KVKK</a>
     </nav>
-  </div>
-  <div class="wrap copyright">© ${new Date().getFullYear()} avmmilyoncu.com</div>
+  </div></div>
 </footer>
 </body>
 </html>`;
 }
 
-const badges = html`<ul class="badges">
-  <li><strong>Kapıda ödeme</strong><span>Nakit veya kart</span></li>
-  <li><strong>Hızlı kargo</strong><span>1-2 iş gününde kargoda</span></li>
-  <li><strong>14 gün iade</strong><span>Koşulsuz iade hakkı</span></li>
-</ul>`;
+const step = (n, title, sub) => html`<div class="step-head"><span class="step-no">${n}</span><div><h2>${title}</h2>${sub ? html`<p>${sub}</p>` : ''}</div></div>`;
 
-function card(p) {
-  return html`<a class="card" href="/urun/${p.slug}">
-  <div class="card-img"><img src="${p.image || '/img/placeholder.svg'}" alt="${p.name}" loading="lazy" width="400" height="400"></div>
+function productCard(p) {
+  const discount = p.compare_price > p.price ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
+  const soldOut = p.stock === 'tukendi';
+  return html`<article class="card" id="urun-${p.slug}" data-product="${p.slug}">
+  <div class="card-img">
+    ${discount ? html`<span class="badge"><b>%${discount}</b>indirim</span>` : ''}
+    <img src="${p.image || '/img/placeholder.svg'}" alt="${p.name}" width="600" height="330" loading="lazy">
+  </div>
   <div class="card-body">
     <h3>${p.name}</h3>
-    <div class="price-row">
-      <span class="price">${formatTRY(p.price)}</span>
-      ${p.compare_price > p.price ? html`<s class="old">${formatTRY(p.compare_price)}</s>` : ''}
+    ${p.headline ? html`<p class="card-sub">${p.headline}</p>` : ''}
+    <div class="prices">
+      ${discount ? html`<s>${formatTRY(p.compare_price)}</s>` : ''}
+      <strong>${formatTRY(p.price)}</strong>
     </div>
-    <span class="btn btn-sm">İncele</span>
-  </div>
-</a>`;
-}
-
-export function homePage(ctx, products) {
-  return layout(ctx, {}, html`
-<section class="hero">
-  <div class="wrap">
-    <h1>Popüler ürünler, <span class="accent">uygun fiyat</span></h1>
-    <p>Seçilmiş ürünler kapıda ödeme ve hızlı kargo ile kapınızda.</p>
-  </div>
-</section>
-<section class="wrap section">
-  ${badges}
-  <h2 class="section-title">Ürünler</h2>
-  ${products.length ? '' : html`<p class="muted">Şu an satışta ürün bulunmuyor. Yakında yeni ürünlerle buradayız.</p>`}
-  <div class="grid">${products.map(card)}</div>
-</section>`);
-}
-
-export function productPage(ctx, { product, others, methods, form, errors }) {
-  const meta = {
-    title: `${product.name} | ${SITE_NAME}`,
-    description: product.headline || product.description,
-    ogImage: product.image ? (product.image.startsWith('http') ? product.image : ctx.rt.siteUrl + product.image) : '',
-  };
-  if (product.status !== 'aktif') {
-    return layout(ctx, meta, html`
-<section class="wrap section">
-  <div class="notice">
-    <h1>${product.name}</h1>
-    <p>Bu ürün şu an satışta değil. Aşağıdaki ürünlerimize göz atabilirsiniz.</p>
-  </div>
-  <div class="grid">${others.map(card)}</div>
-</section>`);
-  }
-  const discount = product.compare_price > product.price ? Math.round((1 - product.price / product.compare_price) * 100) : 0;
-  const qty = Number(form.quantity) || 1;
-  const faq = faqItems(product.faq);
-  const val = (k) => form[k] || '';
-
-  return layout(ctx, meta, html`
-<section class="product-hero wrap">
-  <div class="product-media">
-    ${discount ? html`<span class="ribbon">%${discount} indirim</span>` : ''}
-    <img src="${product.image || '/img/placeholder.svg'}" alt="${product.name}" width="600" height="600" fetchpriority="high">
-  </div>
-  <div class="product-info">
-    <h1>${product.name}</h1>
-    ${product.headline ? html`<p class="headline">${product.headline}</p>` : ''}
-    <div class="price-row big">
-      <span class="price">${formatTRY(product.price)}</span>
-      ${discount ? html`<s class="old">${formatTRY(product.compare_price)}</s>` : ''}
-    </div>
-    <ul class="features">${lines(product.features).map((f) => html`<li>${f}</li>`)}</ul>
-    <a href="#siparis" class="btn btn-block btn-lg">Hemen Sipariş Ver</a>
-    ${badges}
-  </div>
-</section>
-
-${product.description ? html`<section class="wrap section">
-  <h2 class="section-title">Ürün hakkında</h2>
-  <div class="prose">${lines(product.description).map((l) => html`<p>${l}</p>`)}</div>
-</section>` : ''}
-
-<section class="wrap section" id="siparis">
-  <div class="order-box">
-    <h2>Sipariş formu</h2>
-    <p class="muted">Formu doldurun, siparişinizi telefonla teyit edelim.</p>
-    ${errors.length ? html`<div class="alert" role="alert"><ul>${errors.map((e) => html`<li>${e}</li>`)}</ul></div>` : ''}
-    <form method="post" action="/siparis#siparis" class="form" novalidate>
-      <input type="hidden" name="product_id" value="${product.id}">
-      <div class="hp" aria-hidden="true"><label>Web sitesi <input name="website" tabindex="-1" autocomplete="off"></label></div>
-      <label>Adet
-        <select name="quantity" id="qty" data-price="${product.price}">
-          ${[1, 2, 3, 4, 5].map((i) => html`<option value="${i}" ${qty === i ? 'selected' : ''}>${i}</option>`)}
-        </select>
-      </label>
-      <label>Ad Soyad <input name="customer_name" required autocomplete="name" value="${val('customer_name')}"></label>
-      <label>Cep telefonu <input name="phone" type="tel" inputmode="tel" required autocomplete="tel" placeholder="05xx xxx xx xx" value="${val('phone')}"></label>
-      <div class="row-2">
-        <label>İl <input name="city" required autocomplete="address-level1" value="${val('city')}"></label>
-        <label>İlçe <input name="district" autocomplete="address-level2" value="${val('district')}"></label>
+    <p class="stock stock-${p.stock}">${STOCK_LABELS[p.stock]}</p>
+    <div class="card-actions">
+      <div class="qty" data-qty>
+        <button type="button" data-dec aria-label="Azalt" ${soldOut ? 'disabled' : ''}>−</button>
+        <input type="number" value="1" min="1" max="${MAX_QTY}" inputmode="numeric" aria-label="${p.name} adet" ${soldOut ? 'disabled' : ''}>
+        <button type="button" data-inc aria-label="Artır" ${soldOut ? 'disabled' : ''}>+</button>
       </div>
-      <label>Açık adres <textarea name="address" rows="3" required autocomplete="street-address">${val('address')}</textarea></label>
-      <label>Sipariş notu (isteğe bağlı) <input name="note" value="${val('note')}"></label>
-      <fieldset class="pay">
-        <legend>Ödeme yöntemi</legend>
-        ${Object.keys(methods).map((k) => html`<label class="radio"><input type="radio" name="payment_method" value="${k}" ${form.payment_method === k ? 'checked' : ''}> ${methods[k]}</label>`)}
-      </fieldset>
-      <label class="check"><input type="checkbox" name="onay" value="1" ${form.onay ? 'checked' : ''}>
-        <span><a href="/mesafeli-satis-sozlesmesi" target="_blank">Mesafeli satış sözleşmesini</a> okudum, onaylıyorum.</span></label>
-      <div class="total">Toplam: <strong id="total">${formatTRY(product.price * qty)}</strong></div>
-      <button class="btn btn-block btn-lg" type="submit">Siparişi Tamamla</button>
-    </form>
+      <button type="button" class="btn btn-orange" data-add ${soldOut ? 'disabled' : ''}>${icon('cart')} ${soldOut ? 'Tükendi' : 'Sepete Ekle'}</button>
+    </div>
   </div>
-</section>
+</article>`;
+}
 
-${faq.length ? html`<section class="wrap section">
-  <h2 class="section-title">Sıkça sorulan sorular</h2>
-  <div class="faq">${faq.map((f) => html`<details><summary>${f.q}</summary><p>${f.a}</p></details>`)}</div>
-</section>` : ''}
+const field = (name, label, input, { required, hint, wide } = {}) => html`<div class="field${wide ? ' wide' : ''}" data-field="${name}">
+  <label for="f-${name}">${label}${required ? html` <span class="req">*</span>` : html` <span class="opt">(isteğe bağlı)</span>`}</label>
+  ${input}
+  ${hint ? html`<small class="hint">${hint}</small>` : ''}
+  <small class="err" id="e-${name}" aria-live="polite"></small>
+</div>`;
 
-${others.length ? html`<section class="wrap section">
-  <h2 class="section-title">Diğer ürünler</h2>
-  <div class="grid">${others.map(card)}</div>
-</section>` : ''}
+export function homePage(ctx, { products, options, highlight }) {
+  const shown = products.slice(0, MAX_SHOWN);
+  const anyMethod = options.some((o) => o.enabled);
+  const firstEnabled = options.find((o) => o.enabled);
+  const c = ctx.store.contact;
+  const data = {
+    products: shown.map((p) => ({
+      kod: p.slug, ad: p.name, fiyat: p.price, eskiFiyat: p.compare_price, gorsel: p.image, stok: p.stock,
+    })),
+    kargoUcreti: ctx.store.shippingFee,
+    maxAdet: MAX_QTY,
+    odeme: options.map((o) => ({ kod: o.code, ad: o.title, aktif: o.enabled })),
+    vurgula: highlight || '',
+  };
+  const json = JSON.stringify(data).replace(/</g, '\\u003c');
 
-<div class="sticky-cta">
-  <div><span class="price">${formatTRY(product.price)}</span>${discount ? html` <s class="old">${formatTRY(product.compare_price)}</s>` : ''}</div>
-  <a href="#siparis" class="btn">Sipariş Ver</a>
+  return layout(ctx, {}, html`
+<div class="wrap shop">
+  <section class="sec sec-products" id="urunler">
+    ${step(1, 'Ürünlerinizi Seçin', 'En çok satan ürünlerde kaçırılmayacak fiyatlar!')}
+    ${shown.length ? html`<div class="cards">${shown.map(productCard)}</div>`
+    : html`<p class="empty">Şu an satışta ürün bulunmuyor. Yakında yeni ürünlerle buradayız.</p>`}
+  </section>
+
+  <section class="sec sec-cart" id="sepet">
+    ${step(2, 'Sepetiniz', '')}
+    <div class="panel">
+      <div class="cart-empty" data-cart-empty>Sepetiniz boş. Yukarıdan ürün seçip <strong>Sepete Ekle</strong>'ye basın.</div>
+      <ul class="cart-list" data-cart-list></ul>
+      <div class="cart-totals" data-cart-totals hidden>
+        <div class="cart-ship">${icon('truck')}<div><strong>Tüm Türkiye'ye Hızlı Kargo</strong><span>${ctx.store.deliveryText}</span></div></div>
+        <dl>
+          <dt>Ara toplam</dt><dd data-subtotal>0</dd>
+          <dt>Kargo</dt><dd data-shipping>${ctx.store.shippingFee ? formatTRY(ctx.store.shippingFee) : 'Ücretsiz'}</dd>
+          <dt class="grand">Toplam Tutar</dt><dd class="grand" data-total>0</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <form class="checkout" id="siparis-formu" novalidate>
+    <section class="sec sec-address" id="adres">
+      ${step(3, 'Adres Bilgilerinizi Girin', '')}
+      <div class="panel form-grid">
+        ${field('ad', 'Ad', html`<input id="f-ad" name="ad" autocomplete="given-name" required maxlength="50">`, { required: true })}
+        ${field('soyad', 'Soyad', html`<input id="f-soyad" name="soyad" autocomplete="family-name" required maxlength="50">`, { required: true })}
+        ${field('telefon', 'Telefon', html`<input id="f-telefon" name="telefon" type="tel" inputmode="tel" autocomplete="tel" placeholder="05xx xxx xx xx" required maxlength="20">`, { required: true })}
+        ${field('eposta', 'E-posta', html`<input id="f-eposta" name="eposta" type="email" inputmode="email" autocomplete="email" maxlength="120">`)}
+        ${field('il', 'İl', html`<select id="f-il" name="il" autocomplete="address-level1" required><option value="">İl seçin</option>${ILLER.map((il) => html`<option>${il}</option>`)}</select>`, { required: true })}
+        ${field('ilce', 'İlçe', html`<input id="f-ilce" name="ilce" autocomplete="address-level2" required maxlength="60">`, { required: true })}
+        ${field('mahalle', 'Mahalle', html`<input id="f-mahalle" name="mahalle" required maxlength="80">`, { required: true })}
+        ${field('postaKodu', 'Posta kodu', html`<input id="f-postaKodu" name="postaKodu" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="34000">`)}
+        ${field('adres', 'Açık adres', html`<textarea id="f-adres" name="adres" rows="2" autocomplete="street-address" required maxlength="500" placeholder="Sokak / cadde, bina no, daire no"></textarea>`, { required: true, wide: true })}
+        ${field('not', 'Sipariş notu', html`<textarea id="f-not" name="not" rows="2" maxlength="500"></textarea>`, { wide: true })}
+        <div class="hp" aria-hidden="true"><label>Web sitesi <input name="website" tabindex="-1" autocomplete="off"></label></div>
+      </div>
+    </section>
+
+    <section class="sec sec-pay" id="odeme">
+      ${step(4, 'Siparişi Tamamla', '')}
+      <div class="panel">
+        <div class="pay-options" data-field="odeme">
+          ${options.map((o) => html`<label class="pay-opt${o.enabled ? '' : ' off'}">
+            <input type="radio" name="odemeYontemi" value="${o.code}" ${o.enabled ? '' : 'disabled'} ${firstEnabled && firstEnabled.code === o.code ? 'checked' : ''}>
+            <span class="pay-txt"><strong>${o.title}</strong><small>${o.description}</small></span>
+            ${o.note ? html`<span class="pay-note">${o.note}</span>` : ''}
+          </label>`)}
+          <small class="err" id="e-odeme" aria-live="polite"></small>
+        </div>
+        ${anyMethod ? '' : html`<div class="notice-box">Şu anda online sipariş alınmıyor. Ödeme seçenekleri çok yakında açılacak.${c.phone ? html` Sipariş için bizi arayabilirsiniz: <a href="tel:${c.phone.replace(/[^\d+]/g, '')}">${c.phone}</a>` : ''}</div>`}
+        <div class="field check" data-field="onay">
+          <label><input type="checkbox" name="onay" value="1">
+            <span><a href="/mesafeli-satis-sozlesmesi" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="/gizlilik-ve-kvkk" target="_blank">gizlilik politikasını</a> okudum, kabul ediyorum. <span class="req">*</span></span></label>
+          <small class="err" id="e-onay" aria-live="polite"></small>
+        </div>
+        <div class="form-alert" data-form-alert role="alert" hidden></div>
+        <button type="submit" class="btn btn-green btn-block" data-submit ${anyMethod ? '' : 'disabled'}>${icon('check')} Siparişi Tamamla</button>
+        <p class="secure-note">${icon('lock', 'ico ico-sm')} Bilgileriniz şifreli bağlantıyla gönderilir ve yalnızca siparişiniz için kullanılır.</p>
+      </div>
+    </section>
+  </form>
+
+  <section class="sec sec-done" id="tamamlandi" hidden>
+    <div class="panel done">
+      <div class="done-icon">${icon('check')}</div>
+      <h2>Siparişiniz alındı</h2>
+      <p>Sipariş numaranız: <strong data-done-no></strong></p>
+      <p class="muted">Siparişinizi teyit etmek için sizi telefonla arayacağız. Bu numarayı not almanızı öneririz.</p>
+      <div data-done-summary></div>
+      <a href="/" class="btn btn-orange">Alışverişe devam et</a>
+    </div>
+  </section>
 </div>
-<script>
-  (function () {
-    var q = document.getElementById('qty'), t = document.getElementById('total');
-    var f = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
-    q.addEventListener('change', function () { t.textContent = f.format(q.dataset.price * q.value / 100); });
-  })();
-</script>`);
-}
 
-export function thanksPage(ctx, order) {
-  if (order.payment_status === 'basarisiz') {
-    return layout(ctx, { title: 'Ödeme alınamadı' }, html`
-<section class="wrap section narrow"><div class="notice">
-  <h1>Ödeme alınamadı</h1>
-  <p>Kart ödemesi tamamlanamadı, siparişiniz iptal edildi. Dilerseniz kapıda ödeme ile tekrar sipariş verebilirsiniz.</p>
-  <a class="btn" href="/">Ürünlere dön</a>
-</div></section>`);
-  }
-  return layout(ctx, { title: 'Siparişiniz alındı' }, html`
-<section class="wrap section narrow">
-  <div class="success">
-    <div class="check-icon" aria-hidden="true">✓</div>
-    <h1>Siparişiniz alındı</h1>
-    <p>Teşekkürler ${order.customer_name.split(' ')[0]}! Siparişinizi teyit etmek için kısa süre içinde sizi arayacağız.</p>
-  </div>
-  <dl class="summary">
-    <dt>Sipariş no</dt><dd>${order.order_no}</dd>
-    <dt>Ürün</dt><dd>${order.product_name} × ${order.quantity}</dd>
-    <dt>Toplam</dt><dd>${formatTRY(order.total)}</dd>
-    <dt>Ödeme</dt><dd>${PAYMENT_METHODS[order.payment_method]}${order.payment_status === 'odendi' ? ' (ödendi)' : ''}</dd>
-  </dl>
-  <a class="btn" href="/">Alışverişe devam et</a>
-</section>`);
-}
+<dialog class="confirm" id="onay-penceresi" aria-labelledby="onay-baslik">
+  <form method="dialog" class="confirm-in">
+    <h2 id="onay-baslik">Siparişinizi kontrol edin</h2>
+    <div data-confirm-body></div>
+    <div class="form-alert" data-confirm-alert role="alert" hidden></div>
+    <div class="confirm-actions">
+      <button value="cancel" class="btn btn-light" data-confirm-cancel>Düzenle</button>
+      <button value="ok" class="btn btn-green" data-confirm-ok>${icon('check')} Onayla ve Siparişi Ver</button>
+    </div>
+  </form>
+</dialog>
 
-export function testPaymentPage(ctx, order) {
-  return layout(ctx, { title: 'Test ödeme' }, html`
-<section class="wrap section narrow"><div class="notice">
-  <h1>Test ödeme ekranı</h1>
-  <p>Bu ekran yalnızca test içindir. Gerçek kart bilgisi girilmez, para çekilmez.</p>
-  <dl class="summary">
-    <dt>Sipariş no</dt><dd>${order.order_no}</dd>
-    <dt>Tutar</dt><dd>${formatTRY(order.total)}</dd>
-  </dl>
-  ${order.payment_status === 'bekliyor' ? html`<form method="post" class="btn-row">
-    <button class="btn" name="sonuc" value="basarili">Ödeme başarılı</button>
-    <button class="btn btn-dark" name="sonuc" value="basarisiz">Ödeme başarısız</button>
-  </form>` : html`<a class="btn" href="/siparis/${order.order_no}">Siparişe git</a>`}
-</div></section>`);
+<div class="toast" data-toast role="status" aria-live="polite"></div>
+<noscript><div class="notice-box wrap">Sipariş verebilmek için tarayıcınızda JavaScript açık olmalıdır.</div></noscript>
+<script id="magaza-verisi" type="application/json">${raw(json)}</script>
+<script src="/js/magaza.js?v=6" defer></script>`);
 }
 
 export function messagePage(ctx, heading, text) {
   return layout(ctx, { title: heading }, html`
-<section class="wrap section narrow"><div class="notice">
+<section class="wrap sec narrow"><div class="panel">
   <h1>${heading}</h1>
   <p>${text}</p>
-  <a class="btn" href="/">Ana sayfaya dön</a>
+  <a class="btn btn-orange" href="/">Ana sayfaya dön</a>
 </div></section>`);
 }
 
@@ -243,21 +257,23 @@ export function messagePage(ctx, heading, text) {
 export const PAGES = {
   'iletisim': {
     title: 'İletişim',
-    body: (ctx) => html`
+    body: (ctx) => {
+      const c = ctx.store.contact;
+      return html`
   <p>Sorularınız, siparişleriniz ve iade talepleriniz için bize ulaşabilirsiniz.</p>
-  <ul>
-    <li>Telefon: <a href="tel:${ctx.rt.contact.phone.replace(/[^\d+]/g, '')}">${ctx.rt.contact.phone}</a></li>
-    <li>E-posta: <a href="mailto:${ctx.rt.contact.email}">${ctx.rt.contact.email}</a></li>
-    ${ctx.rt.contact.whatsapp ? html`<li>WhatsApp: <a href="https://wa.me/${ctx.rt.contact.whatsapp}">Mesaj gönderin</a></li>` : ''}
-  </ul>
-  <p class="muted">Çalışma saatleri: Hafta içi 09:00 – 18:00</p>`,
+  ${c.phone || c.email || c.whatsapp ? html`<ul>
+    ${c.phone ? html`<li>Telefon: <a href="tel:${c.phone.replace(/[^\d+]/g, '')}">${c.phone}</a></li>` : ''}
+    ${c.email ? html`<li>E-posta: <a href="mailto:${c.email}">${c.email}</a></li>` : ''}
+    ${c.whatsapp ? html`<li>WhatsApp: <a href="https://wa.me/${c.whatsapp}">Mesaj gönderin</a></li>` : ''}
+  </ul>` : html`<p class="muted">İletişim bilgileri yakında eklenecek.</p>`}`;
+    },
   },
   'iade-ve-degisim': {
     title: 'İade ve Değişim',
     body: () => html`
   <p>Ürünü teslim aldığınız tarihten itibaren 14 gün içinde herhangi bir gerekçe göstermeden iade edebilirsiniz.</p>
   <ul>
-    <li>İade için önce bizimle iletişime geçin, size iade kodunu iletelim.</li>
+    <li>İade için önce bizimle iletişime geçin, size iade bilgilerini iletelim.</li>
     <li>Ürün kullanılmamış ve orijinal ambalajında olmalıdır.</li>
     <li>Ücret iadesi, ürün bize ulaştıktan sonra en geç 14 gün içinde yapılır.</li>
   </ul>
@@ -269,7 +285,7 @@ export const PAGES = {
   <p><strong>Satıcı:</strong> [Firma unvanı], [Adres], [Vergi dairesi / no], [Telefon], [E-posta]</p>
   <p><strong>Alıcı:</strong> Sipariş formunda bilgileri yer alan kişi.</p>
   <h2>Konu</h2>
-  <p>Bu sözleşme, alıcının avmmilyoncu.com üzerinden sipariş verdiği ürünün satışı ve teslimine ilişkin
+  <p>Bu sözleşme, alıcının avmmilyoncu.com üzerinden sipariş verdiği ürünlerin satışı ve teslimine ilişkin
      6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği kapsamındaki hak ve
      yükümlülükleri düzenler.</p>
   <h2>Teslimat</h2>
@@ -281,11 +297,12 @@ export const PAGES = {
   'gizlilik-ve-kvkk': {
     title: 'Gizlilik ve KVKK',
     body: (ctx) => html`
-  <p>Sipariş formunda paylaştığınız ad, telefon ve adres bilgileri yalnızca siparişinizin teyidi, teslimatı ve
-     yasal yükümlülüklerin yerine getirilmesi amacıyla 6698 sayılı KVKK kapsamında işlenir.</p>
+  <p>Sipariş formunda paylaştığınız ad, soyad, telefon, e-posta ve adres bilgileri yalnızca siparişinizin teyidi,
+     teslimatı ve yasal yükümlülüklerin yerine getirilmesi amacıyla 6698 sayılı KVKK kapsamında işlenir.</p>
   <p>Bilgileriniz kargo firması dışında üçüncü kişilerle paylaşılmaz. Reklam performansını ölçmek için hangi
-     reklamdan geldiğiniz bilgisi (UTM) siparişle birlikte saklanır.</p>
-  <p>Haklarınızla ilgili taleplerinizi <a href="mailto:${ctx.rt.contact.email}">${ctx.rt.contact.email}</a> adresine iletebilirsiniz.</p>
+     reklamdan geldiğiniz bilgisi (UTM) siparişle birlikte saklanır. Sepetinizdeki ürünler yalnızca kendi
+     tarayıcınızda tutulur; adres bilgileriniz tarayıcınıza kaydedilmez.</p>
+  ${ctx.store.contact.email ? html`<p>Haklarınızla ilgili taleplerinizi <a href="mailto:${ctx.store.contact.email}">${ctx.store.contact.email}</a> adresine iletebilirsiniz.</p>` : ''}
   <p class="muted">Not: Bu metin taslaktır. Yayına almadan önce firma bilgilerinizle güncelleyin.</p>`,
   },
 };
@@ -293,7 +310,7 @@ export const PAGES = {
 export function infoPage(ctx, key) {
   const p = PAGES[key];
   return layout(ctx, { title: `${p.title} | ${SITE_NAME}` }, html`
-<section class="wrap section narrow prose">
+<section class="wrap sec narrow prose">
   <h1>${p.title}</h1>
   ${p.body(ctx)}
 </section>`);

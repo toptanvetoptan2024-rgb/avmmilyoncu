@@ -1,6 +1,7 @@
 import { html } from '../html.js';
 import { formatTRY, toInput } from '../money.js';
 import { formatDateTime } from '../time.js';
+import { STOCK_LABELS } from '../catalog.js';
 import {
   STAGES, STAGE_LABELS, MAX_PER_STAGE, ORDER_STATUSES, ORDER_STATUS_LABELS, AD_CHANNELS, AD_CHANNEL_LABELS,
   PAYMENT_METHODS, PAYMENT_STATUS_LABELS,
@@ -20,7 +21,7 @@ export function adminLayout(ctx, { title, path, hideNav }, body) {
   <meta name="robots" content="noindex">
   <title>${title} · Yönetim</title>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=4">
 </head>
 <body class="admin">
 <header class="site-header">
@@ -36,8 +37,7 @@ export function adminLayout(ctx, { title, path, hideNav }, body) {
     <a href="/" target="_blank">Siteyi gör ↗</a>
   </nav>`}
 </header>
-${!hideNav && ctx.rt.tempPassword ? html`<div class="test-bar warn-bar">Geçici yönetim şifresi kullanılıyor. Güvenlik için yakında kendi şifrenize geçin.</div>` : ''}
-${ctx.testMode ? html`<div class="test-bar">TEST MODU – kart ödemeleri simülasyon. Canlı ödeme için PAYMENT_MODE=live ve gerçek sağlayıcı gerekir.</div>` : ''}
+${!hideNav && !ctx.store.cashOnDelivery ? html`<div class="test-bar">Sitede sipariş alımı KAPALI: hiçbir ödeme yöntemi açık değil. Kapıda ödemeyi açmak için magaza.json içinde "kapidaOdeme": true yapın.</div>` : ''}
 <main class="wrap section">
 ${body}
 </main>
@@ -49,8 +49,10 @@ export function loginPage(ctx, error, notConfigured) {
   return adminLayout(ctx, { title: 'Yönetim girişi', path: '', hideNav: true }, html`
 <div class="narrow">
   <h1>Yönetim girişi</h1>
-  ${notConfigured ? html`<div class="alert">Yönetim şifresi henüz ayarlanmamış. Cloudflare panelinde bu Worker'ın
-    <strong>Ayarlar → Değişkenler ve Gizli Değerler</strong> bölümüne <strong>ADMIN_PASSWORD</strong> adında bir gizli değer (Secret) ekleyin.</div>` : ''}
+  ${notConfigured ? html`<div class="alert"><strong>Yönetim şifresi henüz ayarlanmamış, panel kilitli.</strong><br>
+    Cloudflare panelinde: <strong>Workers ve Pages → avmmilyoncu → Ayarlar → Değişkenler ve Gizli Diziler → + Ekle</strong>.
+    Tür: <strong>Gizli (Secret)</strong>, ad: <strong>ADMIN_PASSWORD</strong>, değer: şifreniz. Sonra <strong>Dağıt</strong>'a basın.
+    (Yapılar/Derleme bölümündeki "derleme değişkenleri" buraya ulaşmaz.)</div>` : ''}
   ${error ? html`<div class="alert">${error}</div>` : ''}
   <form method="post" class="form">
     <label>Şifre <input type="password" name="password" autocomplete="current-password" autofocus required></label>
@@ -129,19 +131,19 @@ export function dashboardPage(ctx, { range, report, suggestion, slots, daily, ne
 
 export function productsPage(ctx, products) {
   return adminLayout(ctx, { title: 'Ürünler', path: '/urunler' }, html`
-<div class="page-head">
-  <h1>Ürünler</h1>
-  <a class="btn btn-sm" href="/yonetim/urunler/yeni">+ Yeni ürün</a>
-</div>
-<p class="muted small">Ürünler silinmez. Satıştan kaldırmak için ürünü açıp durumunu "Pasif" yapın; geçmişi ve siparişleri korunur.</p>
+<div class="page-head"><h1>Ürünler</h1></div>
+<p class="muted small">Ürün adı, açıklama, fiyat, fotoğraf, stok durumu ve satışta olup olmadığı <strong>urunler.json</strong> dosyasından
+  değiştirilir (GitHub'da dosyayı açıp kalem simgesiyle düzenleyin). Burada yalnızca maliyet, kargo maliyeti ve aşama girilir.
+  Ürünler silinmez; dosyadan çıkarılan ürün pasif olur, geçmişi korunur.</p>
 <div class="table-wrap"><table class="table">
-  <thead><tr><th></th><th>Ürün</th><th>Aşama</th><th>Durum</th><th>Fiyat</th><th>Maliyet</th><th>Kargo</th><th>Birim brüt kâr</th></tr></thead>
+  <thead><tr><th></th><th>Ürün</th><th>Aşama</th><th>Durum</th><th>Stok</th><th>Fiyat</th><th>Maliyet</th><th>Kargo</th><th>Birim brüt kâr</th></tr></thead>
   <tbody>
   ${products.map((p) => html`<tr class="${p.status === 'pasif' ? 'dim' : ''}">
     <td><img class="thumb" src="${p.image || '/img/placeholder.svg'}" alt=""></td>
-    <td><a href="/yonetim/urunler/${p.id}">${p.name}</a><br><span class="muted small">/urun/${p.slug}</span></td>
+    <td><a href="/yonetim/urunler/${p.id}">${p.name}</a><br><span class="muted small">${p.slug}</span></td>
     <td><span class="tag tag-${p.stage}">${STAGE_LABELS[p.stage]}</span></td>
     <td><span class="tag tag-${p.status}">${p.status === 'aktif' ? 'Aktif' : 'Pasif'}</span></td>
+    <td>${STOCK_LABELS[p.stock] || p.stock}</td>
     <td>${formatTRY(p.price)}</td><td>${formatTRY(p.unit_cost)}</td><td>${formatTRY(p.shipping_cost)}</td>
     <td>${formatTRY(p.price - p.unit_cost - p.shipping_cost)}</td>
   </tr>`)}
@@ -151,69 +153,49 @@ export function productsPage(ctx, products) {
 
 const FIELD_LABELS = {
   price: 'Fiyat', compare_price: 'Eski fiyat', unit_cost: 'Maliyet', shipping_cost: 'Kargo maliyeti',
-  stage: 'Aşama', status: 'Durum', name: 'Ad', image: 'Görsel', olusturuldu: 'Oluşturuldu',
+  stage: 'Aşama', status: 'Durum', name: 'Ad', image: 'Görsel', stock: 'Stok', olusturuldu: 'Oluşturuldu',
 };
 const MONEY_FIELDS = ['price', 'compare_price', 'unit_cost', 'shipping_cost'];
 function showVal(f, v) {
   if (v === null || v === '') return '–';
   if (MONEY_FIELDS.includes(f)) return formatTRY(Number(v));
   if (f === 'stage') return STAGE_LABELS[v] || v;
+  if (f === 'stock') return STOCK_LABELS[v] || v;
   return v;
 }
 
 export function productFormPage(ctx, { product, history, errors, saved }) {
   const p = product;
-  return adminLayout(ctx, { title: p.id ? p.name : 'Yeni ürün', path: '/urunler' }, html`
+  return adminLayout(ctx, { title: p.name, path: '/urunler' }, html`
 <div class="page-head">
-  <h1>${p.id ? p.name : 'Yeni ürün'}</h1>
-  ${p.id ? html`<a class="btn btn-sm btn-dark" href="/urun/${p.slug}" target="_blank">Sayfayı gör ↗</a>` : ''}
+  <h1>${p.name}</h1>
+  <a class="btn btn-sm btn-dark" href="/#urun-${p.slug}" target="_blank">Sitede gör ↗</a>
 </div>
 ${saved ? html`<div class="ok">Kaydedildi.</div>` : ''}
 ${errorBox(errors)}
-<form method="post" action="/yonetim/urunler${p.id ? '/' + p.id : ''}" enctype="multipart/form-data" class="form form-wide">
-  <fieldset>
-    <legend>Satış ayarları</legend>
-    <div class="row-2">
-      <label>Aşama
-        <select name="stage">${STAGES.map((s) => html`<option value="${s}" ${sel(p.stage, s)}>${STAGE_LABELS[s]}</option>`)}</select>
-      </label>
-      <label>Durum
-        <select name="status">
-          <option value="aktif" ${sel(p.status, 'aktif')}>Aktif (satışta)</option>
-          <option value="pasif" ${sel(p.status, 'pasif')}>Pasif (satıştan kaldırıldı)</option>
-        </select>
-      </label>
-    </div>
-    <div class="row-2">
-      <label>Satış fiyatı (₺) <input name="price" inputmode="decimal" required value="${toInput(p.price)}" placeholder="899,90"></label>
-      <label>Eski fiyat (₺, üstü çizili) <input name="compare_price" inputmode="decimal" value="${toInput(p.compare_price)}"></label>
-    </div>
-    <div class="row-2">
-      <label>Ürün maliyeti (₺, adet başı) <input name="unit_cost" inputmode="decimal" value="${toInput(p.unit_cost)}"></label>
-      <label>Kargo maliyeti (₺, sipariş başı) <input name="shipping_cost" inputmode="decimal" value="${toInput(p.shipping_cost)}"></label>
-    </div>
-  </fieldset>
-  <fieldset>
-    <legend>Sayfa içeriği</legend>
-    <label>Ürün adı <input name="name" required value="${p.name}"></label>
-    <label>Sayfa adresi <span class="muted small">(boş bırakılırsa addan üretilir)</span>
-      <input name="slug" value="${p.slug}" placeholder="ornek-urun"></label>
-    <label>Başlık / slogan <input name="headline" value="${p.headline}"></label>
-    <label>Açıklama <textarea name="description" rows="4">${p.description}</textarea></label>
-    <label>Öne çıkan özellikler <span class="muted small">(her satıra bir tane)</span>
-      <textarea name="features" rows="4">${p.features}</textarea></label>
-    <label>Sıkça sorulan sorular <span class="muted small">(her satır: Soru | Cevap)</span>
-      <textarea name="faq" rows="4">${p.faq}</textarea></label>
-    <label>Sıra <input name="sort_order" type="number" value="${p.sort_order}"></label>
-  </fieldset>
-  <fieldset>
-    <legend>Görsel</legend>
+<div class="cols">
+  <div>
+    <dl class="info-list">
+      <dt>Kod</dt><dd>${p.slug}</dd>
+      <dt>Satış fiyatı</dt><dd>${formatTRY(p.price)}</dd>
+      <dt>Eski fiyat</dt><dd>${p.compare_price ? formatTRY(p.compare_price) : '–'}</dd>
+      <dt>Kısa açıklama</dt><dd>${p.headline || '–'}</dd>
+      <dt>Stok</dt><dd>${STOCK_LABELS[p.stock] || p.stock}</dd>
+      <dt>Durum</dt><dd>${p.status === 'aktif' ? 'Aktif (satışta)' : 'Pasif'}</dd>
+    </dl>
+    <p class="muted small">Bu bilgiler urunler.json dosyasından gelir.</p>
     ${p.image ? html`<img class="preview" src="${p.image}" alt="">` : ''}
-    <label>Yeni görsel yükle (JPG, PNG, WEBP – en fazla 3 MB) <input type="file" name="image_file" accept="image/jpeg,image/png,image/webp"></label>
-    <label>veya görsel adresi <input name="image_url" value="${p.image}"></label>
-  </fieldset>
-  <button class="btn btn-lg">Kaydet</button>
-</form>
+  </div>
+  <form method="post" action="/yonetim/urunler/${p.id}" class="form">
+    <label>Aşama
+      <select name="stage">${STAGES.map((s) => html`<option value="${s}" ${sel(p.stage, s)}>${STAGE_LABELS[s]}</option>`)}</select>
+    </label>
+    <label>Ürün maliyeti (₺, adet başı) <input name="unit_cost" inputmode="decimal" value="${toInput(p.unit_cost)}"></label>
+    <label>Kargo maliyeti (₺, sipariş başı) <input name="shipping_cost" inputmode="decimal" value="${toInput(p.shipping_cost)}"></label>
+    <button class="btn btn-block">Kaydet</button>
+    <p class="muted small">Maliyetler gizlidir; sitede görünmez ve GitHub'a yazılmaz.</p>
+  </form>
+</div>
 ${history.length ? html`<h2>Değişiklik geçmişi</h2>
 <div class="table-wrap"><table class="table">
   <thead><tr><th>Tarih</th><th>Alan</th><th>Eski</th><th>Yeni</th></tr></thead>
@@ -247,7 +229,7 @@ export function ordersPage(ctx, { orders, filter, products }) {
     <td><a href="/yonetim/siparisler/${o.id}">${o.order_no}</a>${o.is_test ? ' (test)' : ''}</td>
     <td>${formatDateTime(o.created_at)}</td>
     <td>${o.customer_name}<br><span class="muted small">${o.phone} · ${o.city}</span></td>
-    <td>${o.product_name} × ${o.quantity}</td>
+    <td class="small">${o.product_name}</td>
     <td>${formatTRY(o.total)}</td>
     <td>${o.payment_method === 'kapida' ? 'Kapıda' : 'Kart'}${o.payment_status === 'odendi' ? ' ✓' : o.payment_status === 'basarisiz' ? ' ✗' : ''}</td>
     <td><span class="tag tag-${o.status}">${ORDER_STATUS_LABELS[o.status]}</span></td>
@@ -257,7 +239,9 @@ export function ordersPage(ctx, { orders, filter, products }) {
 </table></div>`);
 }
 
-export function orderPage(ctx, { order: o, events }) {
+export function orderPage(ctx, { order: o, items, events }) {
+  const cogs = items.reduce((t, i) => t + i.quantity * i.unit_cost, 0);
+  const profit = o.subtotal - cogs - o.shipping_cost + o.shipping_fee;
   return adminLayout(ctx, { title: o.order_no, path: '/siparisler' }, html`
 <div class="page-head">
   <h1>Sipariş ${o.order_no}</h1>
@@ -265,19 +249,28 @@ export function orderPage(ctx, { order: o, events }) {
 </div>
 ${o.is_test ? html`<div class="alert">Bu bir TEST siparişi. Raporlara dahil edilmez.</div>` : ''}
 <div class="cols">
-  <dl class="summary">
-    <dt>Tarih</dt><dd>${formatDateTime(o.created_at)}</dd>
-    <dt>Müşteri</dt><dd>${o.customer_name}</dd>
-    <dt>Telefon</dt><dd><a href="tel:${o.phone}">${o.phone}</a></dd>
-    <dt>Adres</dt><dd>${o.address}<br>${o.district} / ${o.city}</dd>
-    ${o.note ? html`<dt>Not</dt><dd>${o.note}</dd>` : ''}
-    <dt>Ürün</dt><dd>${o.product_name} × ${o.quantity}</dd>
-    <dt>Tutar</dt><dd>${formatTRY(o.total)}</dd>
-    <dt>Maliyet</dt><dd>${formatTRY(o.unit_cost * o.quantity)} ürün + ${formatTRY(o.shipping_cost)} kargo</dd>
-    <dt>Brüt kâr</dt><dd>${formatTRY(o.total - o.unit_cost * o.quantity - o.shipping_cost)}</dd>
-    <dt>Ödeme</dt><dd>${PAYMENT_METHODS[o.payment_method]} – ${PAYMENT_STATUS_LABELS[o.payment_status]}</dd>
-    <dt>Kaynak</dt><dd>${[o.utm_source, o.utm_medium, o.utm_campaign, o.utm_content].filter(Boolean).join(' / ') || '–'}</dd>
-  </dl>
+  <div>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Ürün</th><th>Adet</th><th>Birim fiyat</th><th>Tutar</th><th>Birim maliyet</th></tr></thead>
+      <tbody>${items.map((i) => html`<tr><td>${i.product_name}</td><td>${i.quantity}</td><td>${formatTRY(i.unit_price)}</td>
+        <td>${formatTRY(i.quantity * i.unit_price)}</td><td>${formatTRY(i.unit_cost)}</td></tr>`)}</tbody>
+    </table></div>
+    <dl class="summary">
+      <dt>Tarih</dt><dd>${formatDateTime(o.created_at)}</dd>
+      <dt>Müşteri</dt><dd>${o.customer_name}</dd>
+      <dt>Telefon</dt><dd><a href="tel:${o.phone}">${o.phone}</a></dd>
+      ${o.email ? html`<dt>E-posta</dt><dd>${o.email}</dd>` : ''}
+      <dt>Adres</dt><dd>${o.address}<br>${o.neighborhood ? html`${o.neighborhood} Mah., ` : ''}${o.district} / ${o.city} ${o.postal_code}</dd>
+      ${o.note ? html`<dt>Sipariş notu</dt><dd>${o.note}</dd>` : ''}
+      <dt>Ara toplam</dt><dd>${formatTRY(o.subtotal)}</dd>
+      <dt>Müşteriden kargo</dt><dd>${formatTRY(o.shipping_fee)}</dd>
+      <dt>Toplam</dt><dd>${formatTRY(o.total)}</dd>
+      <dt>Maliyet</dt><dd>${formatTRY(cogs)} ürün + ${formatTRY(o.shipping_cost)} kargo</dd>
+      <dt>Brüt kâr</dt><dd>${formatTRY(profit)}</dd>
+      <dt>Ödeme</dt><dd>${PAYMENT_METHODS[o.payment_method]} – ${PAYMENT_STATUS_LABELS[o.payment_status]}</dd>
+      <dt>Kaynak</dt><dd>${[o.utm_source, o.utm_medium, o.utm_campaign, o.utm_content].filter(Boolean).join(' / ') || '–'}</dd>
+    </dl>
+  </div>
   <form method="post" class="form">
     <label>Sipariş durumu
       <select name="status">${ORDER_STATUSES.map((s) => html`<option value="${s}" ${sel(o.status, s)}>${ORDER_STATUS_LABELS[s]}</option>`)}</select>
