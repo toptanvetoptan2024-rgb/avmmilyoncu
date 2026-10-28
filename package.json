@@ -2,10 +2,10 @@
   "name": "avmmilyoncu",
   "version": "1.0.0",
   "description": "AVM Milyoncu - reklam odaklı perakende satış sitesi",
-  "main": "server.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
     "test": "node --test test/*.test.js"
   },
   "repository": {
@@ -17,14 +17,13 @@
     "url": "https://github.com/toptanvetoptan2024-rgb/avmmilyoncu/issues"
   },
   "homepage": "https://github.com/toptanvetoptan2024-rgb/avmmilyoncu#readme",
-  "dependencies": {
-    "better-sqlite3": "^13.0.3",
-    "ejs": "^7.0.2",
-    "express": "^4.22.3",
-    "multer": "^2.5.0"
-  },
   "private": true,
-  "engines": {
-    "node": ">=18"
-  }
+  "dependencies": {
+    "hono": "^4.13.14"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^13.0.3",
+    "wrangler": "^4.155.0"
+  },
+  "type": "module"
 }

@@ -1,0 +1,2 @@
+# Bilgisayarda "npm run dev" ile denemek icin bu dosyayi .dev.vars adiyla kopyalayin.
+ADMIN_PASSWORD=demo

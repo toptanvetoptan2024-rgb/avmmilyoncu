@@ -1,53 +1,44 @@
-const crypto = require('crypto');
-const config = require('./config');
+import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 
-// Basit, imzalı çerezle yönetici oturumu.
+// Basit, imzalı çerezle yönetici oturumu (Web Crypto ile).
 const COOKIE = 'avm_admin';
-const MAX_AGE = 7 * 24 * 3600 * 1000;
+const MAX_AGE = 7 * 24 * 3600; // saniye
+const enc = new TextEncoder();
 
-function sign(value) {
-  return crypto.createHmac('sha256', config.sessionSecret).update(value).digest('base64url');
+async function hmac(secret, msg) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(msg)));
+  return btoa(String.fromCharCode(...sig)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function parseCookies(req) {
-  const out = {};
-  String(req.headers.cookie || '').split(';').forEach((part) => {
-    const i = part.indexOf('=');
-    if (i > 0) {
-      try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch { /* yoksay */ }
-    }
-  });
-  return out;
+// Zamanlamaya karşı güvenli karşılaştırma: iki değerin özetini karşılaştırır.
+export async function safeEqual(a, b) {
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(String(a))),
+    crypto.subtle.digest('SHA-256', enc.encode(String(b))),
+  ]);
+  const x = new Uint8Array(ha); const y = new Uint8Array(hb);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
 }
 
-function safeEqual(a, b) {
-  const ha = crypto.createHash('sha256').update(String(a)).digest();
-  const hb = crypto.createHash('sha256').update(String(b)).digest();
-  return crypto.timingSafeEqual(ha, hb);
-}
-
-function isAdmin(req) {
-  const raw = parseCookies(req)[COOKIE];
+export async function isAdmin(c, secret) {
+  if (!secret) return false;
+  const raw = getCookie(c, COOKIE);
   if (!raw) return false;
   const [exp, sig] = raw.split('.');
   if (!exp || !sig || Number(exp) < Date.now()) return false;
-  return safeEqual(sig, sign(exp));
+  return safeEqual(sig, await hmac(secret, exp));
 }
 
-function login(res, req) {
-  const exp = String(Date.now() + MAX_AGE);
-  res.cookie(COOKIE, `${exp}.${sign(exp)}`, {
-    httpOnly: true, sameSite: 'strict', secure: req.secure, maxAge: MAX_AGE, path: '/',
+export async function login(c, secret) {
+  const exp = String(Date.now() + MAX_AGE * 1000);
+  setCookie(c, COOKIE, `${exp}.${await hmac(secret, exp)}`, {
+    httpOnly: true, sameSite: 'Strict', secure: new URL(c.req.url).protocol === 'https:', maxAge: MAX_AGE, path: '/',
   });
 }
 
-function logout(res) {
-  res.clearCookie(COOKIE, { path: '/' });
+export function logout(c) {
+  deleteCookie(c, COOKIE, { path: '/' });
 }
-
-function requireAdmin(req, res, next) {
-  if (isAdmin(req)) return next();
-  return res.redirect('/yonetim/giris');
-}
-
-module.exports = { isAdmin, login, logout, requireAdmin, safeEqual, parseCookies };
