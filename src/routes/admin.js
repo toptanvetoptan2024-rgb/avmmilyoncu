@@ -1,232 +1,245 @@
-const crypto = require('crypto');
-const fs = require('fs');
-const express = require('express');
-const multer = require('multer');
-const config = require('../config');
-const { parseTRY } = require('../money');
-const { todayTR, daysAgoTR, isDate } = require('../time');
-const { slugify } = require('../products');
-const { productReport, dailySeries, suggestion } = require('../reports');
-const auth = require('../auth');
+import { Hono } from 'hono';
+import { STAGES, ORDER_STATUSES, AD_CHANNELS, PAYMENT_STATUS_LABELS } from '../config.js';
+import { parseTRY } from '../money.js';
+import { todayTR, daysAgoTR, isDate } from '../time.js';
+import { slugify } from '../products.js';
+import { productReport, dailySeries, suggestion } from '../reports.js';
+import { all } from '../db.js';
+import * as auth from '../auth.js';
+import * as v from '../views/admin.js';
 
 const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
+const MAX_IMAGE = 3 * 1024 * 1024;
 
-module.exports = function adminRoutes({ db, products, orders }) {
-  const router = express.Router();
-  fs.mkdirSync(config.uploadDir, { recursive: true });
+export const admin = new Hono();
 
-  const upload = multer({
-    storage: multer.diskStorage({
-      destination: config.uploadDir,
-      filename: (req, file, cb) => cb(null, `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${IMAGE_TYPES[file.mimetype]}`),
-    }),
-    limits: { fileSize: 3 * 1024 * 1024, files: 1 },
-    fileFilter: (req, file, cb) => cb(null, Boolean(IMAGE_TYPES[file.mimetype])),
-  });
+admin.use('*', async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'no-store');
+  c.header('X-Robots-Tag', 'noindex');
+});
 
-  router.use((req, res, next) => {
-    res.set('Cache-Control', 'no-store');
-    res.set('X-Robots-Tag', 'noindex');
-    res.locals.path = req.path;
-    next();
-  });
+const out = (c, page, status = 200) => c.html(page.toString(), status);
 
-  // --- Giriş ---
-  const attempts = new Map();
-  router.get('/giris', (req, res) => res.render('admin/login', { title: 'Yönetim girişi', error: '' }));
-  router.post('/giris', (req, res) => {
-    const key = req.ip;
-    const a = attempts.get(key) || { n: 0, t: Date.now() };
-    if (Date.now() - a.t > 15 * 60000) { a.n = 0; a.t = Date.now(); }
-    if (a.n >= 10) {
-      return res.status(429).render('admin/login', { title: 'Yönetim girişi', error: 'Çok fazla deneme. 15 dakika sonra tekrar deneyin.' });
-    }
-    if (auth.safeEqual(req.body.password || '', config.adminPassword)) {
-      attempts.delete(key);
-      auth.login(res, req);
-      return res.redirect('/yonetim');
-    }
-    a.n += 1;
-    attempts.set(key, a);
-    return res.status(401).render('admin/login', { title: 'Yönetim girişi', error: 'Şifre hatalı.' });
-  });
-  router.post('/cikis', (req, res) => { auth.logout(res); res.redirect('/yonetim/giris'); });
+// --- Giriş ---
+// Basit deneme sınırı (her Cloudflare sunucusu için ayrı tutulur).
+const attempts = new Map();
 
-  router.use(auth.requireAdmin);
+admin.get('/giris', (c) => out(c, v.loginPage(c.get('ctx'), '', !c.get('ctx').rt.adminPassword)));
 
-  // --- Panel / Rapor ---
-  function range(q) {
-    const preset = q.aralik || '7';
-    const to = isDate(q.bitis) ? q.bitis : todayTR();
-    let from;
-    if (isDate(q.baslangic)) from = q.baslangic;
-    else if (preset === 'bugun') from = todayTR();
-    else if (preset === 'tumu') from = '2000-01-01';
-    else from = daysAgoTR(Math.max(0, (Number(preset) || 7) - 1));
-    return { from, to, preset: isDate(q.baslangic) ? 'ozel' : preset };
+admin.post('/giris', async (c) => {
+  const rt = c.get('ctx').rt;
+  if (!rt.adminPassword) return out(c, v.loginPage(c.get('ctx'), '', true), 503);
+  const ip = c.req.header('cf-connecting-ip') || 'yerel';
+  const a = attempts.get(ip) || { n: 0, t: Date.now() };
+  if (Date.now() - a.t > 15 * 60000) { a.n = 0; a.t = Date.now(); }
+  if (a.n >= 10) return out(c, v.loginPage(c.get('ctx'), 'Çok fazla deneme. 15 dakika sonra tekrar deneyin.'), 429);
+  const body = await c.req.parseBody();
+  if (await auth.safeEqual(body.password || '', rt.adminPassword)) {
+    attempts.delete(ip);
+    await auth.login(c, rt.sessionSecret);
+    return c.redirect('/yonetim', 302);
   }
+  a.n += 1;
+  attempts.set(ip, a);
+  return out(c, v.loginPage(c.get('ctx'), 'Şifre hatalı.'), 401);
+});
 
-  router.get('/', (req, res) => {
-    const r = range(req.query);
-    const report = productReport(db, r);
-    const all = products.listAll();
-    const slots = {};
-    config.stages.forEach((s) => { slots[s] = all.filter((p) => p.status === 'aktif' && p.stage === s); });
-    res.render('admin/dashboard', {
-      title: 'Panel', range: r, report, suggestion, slots,
-      daily: dailySeries(db, r).slice(0, 31),
-      newOrders: db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE status = 'yeni' AND is_test = 0`).get().n,
-    });
-  });
+admin.post('/cikis', (c) => { auth.logout(c); return c.redirect('/yonetim/giris', 303); });
 
-  // --- Ürünler ---
-  router.get('/urunler', (req, res) => res.render('admin/products', { title: 'Ürünler', products: products.listAll() }));
+admin.use('*', async (c, next) => {
+  if (!(await auth.isAdmin(c, c.get('ctx').rt.sessionSecret))) return c.redirect('/yonetim/giris', 302);
+  return next();
+});
 
-  const emptyProduct = {
-    id: null, slug: '', name: '', headline: '', description: '', features: '', faq: '', price: null,
-    compare_price: null, unit_cost: 0, shipping_cost: 0, image: '', stage: 'test', status: 'aktif', sort_order: 0,
-  };
+// --- Panel / Rapor ---
+function range(q) {
+  const preset = q.aralik || '7';
+  const to = isDate(q.bitis) ? q.bitis : todayTR();
+  let from;
+  if (isDate(q.baslangic)) from = q.baslangic;
+  else if (preset === 'bugun') from = todayTR();
+  else if (preset === 'tumu') from = '2000-01-01';
+  else from = daysAgoTR(Math.max(0, (Number(preset) || 7) - 1));
+  return { from, to, preset: isDate(q.baslangic) ? 'ozel' : preset };
+}
 
-  router.get('/urunler/yeni', (req, res) => res.render('admin/product-form', {
-    title: 'Yeni ürün', product: emptyProduct, history: [], errors: [],
+admin.get('/', async (c) => {
+  const s = c.get('s');
+  const r = range(c.req.query());
+  const [report, daily, allProducts, newOrders] = await Promise.all([
+    productReport(s.db, r),
+    dailySeries(s.db, r),
+    s.products.listAll(),
+    s.db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE status = 'yeni' AND is_test = 0`).first(),
+  ]);
+  const slots = {};
+  STAGES.forEach((st) => { slots[st] = allProducts.filter((p) => p.status === 'aktif' && p.stage === st); });
+  return out(c, v.dashboardPage(c.get('ctx'), {
+    range: r, report, suggestion, slots, daily: daily.slice(0, 31), newOrders: newOrders.n,
   }));
+});
 
-  router.get('/urunler/:id', (req, res, next) => {
-    const product = products.getById(Number(req.params.id));
-    if (!product) return next();
-    res.render('admin/product-form', {
-      title: product.name, product, history: products.history(product.id), errors: [], saved: req.query.kaydedildi,
-    });
-  });
+// --- Ürünler ---
+admin.get('/urunler', async (c) => out(c, v.productsPage(c.get('ctx'), await c.get('s').products.listAll())));
 
-  function readProductForm(req) {
-    const b = req.body;
-    const data = {
-      name: String(b.name || '').trim(),
-      slug: slugify(b.slug || b.name || ''),
-      headline: String(b.headline || '').trim(),
-      description: String(b.description || '').trim(),
-      features: String(b.features || '').trim(),
-      faq: String(b.faq || '').trim(),
-      price: parseTRY(b.price),
-      compare_price: parseTRY(b.compare_price),
-      unit_cost: parseTRY(b.unit_cost) ?? 0,
-      shipping_cost: parseTRY(b.shipping_cost) ?? 0,
-      stage: b.stage,
-      status: b.status,
-      sort_order: Number.parseInt(b.sort_order, 10) || 0,
-    };
-    if (req.file) data.image = '/uploads/' + req.file.filename;
-    else if (b.image_url !== undefined) data.image = String(b.image_url).trim();
-    return data;
-  }
-
-  function saveProduct(req, res, id) {
-    const data = readProductForm(req);
-    const result = id ? products.update(id, data) : products.create(data);
-    if (result.errors) {
-      if (req.file) fs.unlink(req.file.path, () => {});
-      const current = id ? products.getById(id) : emptyProduct;
-      return res.status(400).render('admin/product-form', {
-        title: data.name || 'Ürün', product: { ...current, ...data, id }, history: id ? products.history(id) : [], errors: result.errors,
-      });
-    }
-    return res.redirect(303, `/yonetim/urunler/${result.id}?kaydedildi=1`);
-  }
-
-  router.post('/urunler', upload.single('image_file'), (req, res) => saveProduct(req, res, null));
-  router.post('/urunler/:id', upload.single('image_file'), (req, res, next) => {
-    const id = Number(req.params.id);
-    if (!products.getById(id)) return next();
-    return saveProduct(req, res, id);
-  });
-
-  // --- Siparişler ---
-  router.get('/siparisler', (req, res) => {
-    const filter = {
-      status: config.orderStatuses.includes(req.query.durum) ? req.query.durum : '',
-      productId: Number(req.query.urun) || 0,
-      includeTest: req.query.test === '1',
-    };
-    res.render('admin/orders', { title: 'Siparişler', orders: orders.list(filter), filter, products: products.listAll() });
-  });
-
-  router.get('/siparisler.csv', (req, res) => {
-    const rows = orders.list({ includeTest: req.query.test === '1', limit: 100000 });
-    const cols = ['order_no', 'created_at', 'product_name', 'quantity', 'unit_price', 'unit_cost', 'shipping_cost', 'total',
-      'status', 'payment_method', 'payment_status', 'is_test', 'customer_name', 'phone', 'city', 'district', 'address', 'note',
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
-    const money = new Set(['unit_price', 'unit_cost', 'shipping_cost', 'total']);
-    const esc = (v) => {
-      let s = String(v ?? '');
-      if (/^[=+\-@]/.test(s)) s = "'" + s; // Excel formül enjeksiyonunu önle
-      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const body = [cols.join(';')].concat(rows.map((r) => cols.map((c) => esc(money.has(c) ? (r[c] / 100).toFixed(2).replace('.', ',') : r[c])).join(';')));
-    res.set('Content-Type', 'text/csv; charset=utf-8');
-    res.set('Content-Disposition', `attachment; filename="siparisler-${todayTR()}.csv"`);
-    res.send('﻿' + body.join('\n'));
-  });
-
-  router.get('/siparisler/:id', (req, res, next) => {
-    const order = orders.getById(Number(req.params.id));
-    if (!order) return next();
-    res.render('admin/order', { title: order.order_no, order, events: orders.events(order.id) });
-  });
-
-  router.post('/siparisler/:id', (req, res, next) => {
-    const id = Number(req.params.id);
-    const order = orders.getById(id);
-    if (!order) return next();
-    if (req.body.status) orders.setStatus(id, req.body.status);
-    if (req.body.is_test !== undefined) {
-      const t = req.body.is_test === '1';
-      if (Boolean(order.is_test) !== t) orders.setTest(id, t);
-    }
-    if (req.body.payment_status && ['bekliyor', 'odendi', 'basarisiz'].includes(req.body.payment_status)
-      && req.body.payment_status !== order.payment_status) {
-      orders.setPaymentStatus(id, req.body.payment_status);
-    }
-    orders.addNote(id, req.body.note);
-    res.redirect(303, `/yonetim/siparisler/${id}`);
-  });
-
-  // --- Reklam harcamaları ---
-  router.get('/reklam', (req, res) => {
-    const list = db.prepare(`SELECT a.*, p.name AS product_name FROM ad_spend a JOIN products p ON p.id = a.product_id
-      ORDER BY a.spend_date DESC, a.id DESC LIMIT 300`).all();
-    res.render('admin/ads', {
-      title: 'Reklam harcamaları', list, products: products.listAll(), errors: [],
-      form: { spend_date: todayTR(), channel: 'meta' },
-    });
-  });
-
-  router.post('/reklam', (req, res) => {
-    const b = req.body;
-    const errors = [];
-    const product = products.getById(Number(b.product_id));
-    if (!product) errors.push('Ürün seçin.');
-    if (!isDate(b.spend_date)) errors.push('Geçerli bir tarih girin.');
-    if (!config.adChannels.includes(b.channel)) errors.push('Kanal seçin.');
-    const amount = parseTRY(b.amount);
-    if (amount === null) errors.push('Harcama tutarını girin.');
-    if (errors.length) {
-      const list = db.prepare(`SELECT a.*, p.name AS product_name FROM ad_spend a JOIN products p ON p.id = a.product_id
-        ORDER BY a.spend_date DESC, a.id DESC LIMIT 300`).all();
-      return res.status(400).render('admin/ads', { title: 'Reklam harcamaları', list, products: products.listAll(), errors, form: b });
-    }
-    db.prepare(`INSERT INTO ad_spend (product_id, spend_date, channel, amount, impressions, clicks, note)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`).run(product.id, b.spend_date, b.channel, amount,
-      Math.max(0, Number.parseInt(b.impressions, 10) || 0), Math.max(0, Number.parseInt(b.clicks, 10) || 0),
-      String(b.note || '').trim().slice(0, 300));
-    res.redirect(303, '/yonetim/reklam');
-  });
-
-  router.post('/reklam/:id/gecersiz', (req, res) => {
-    db.prepare('UPDATE ad_spend SET voided = 1 - voided WHERE id = ?').run(Number(req.params.id));
-    res.redirect(303, '/yonetim/reklam');
-  });
-
-  return router;
+const emptyProduct = {
+  id: null, slug: '', name: '', headline: '', description: '', features: '', faq: '', price: null,
+  compare_price: null, unit_cost: 0, shipping_cost: 0, image: '', stage: 'test', status: 'aktif', sort_order: 0,
 };
 
+admin.get('/urunler/yeni', (c) => out(c, v.productFormPage(c.get('ctx'), { product: emptyProduct, history: [], errors: [] })));
+
+admin.get('/urunler/:id', async (c) => {
+  const s = c.get('s');
+  const product = await s.products.getById(c.req.param('id'));
+  if (!product) return c.notFound();
+  return out(c, v.productFormPage(c.get('ctx'), {
+    product, history: await s.products.history(product.id), errors: [], saved: c.req.query('kaydedildi'),
+  }));
+});
+
+async function saveProduct(c, id) {
+  const s = c.get('s');
+  const b = await c.req.parseBody();
+  const data = {
+    name: String(b.name || '').trim(),
+    slug: slugify(b.slug || b.name || ''),
+    headline: String(b.headline || '').trim(),
+    description: String(b.description || '').trim(),
+    features: String(b.features || '').trim(),
+    faq: String(b.faq || '').trim(),
+    price: parseTRY(b.price),
+    compare_price: parseTRY(b.compare_price),
+    unit_cost: parseTRY(b.unit_cost) ?? 0,
+    shipping_cost: parseTRY(b.shipping_cost) ?? 0,
+    stage: b.stage,
+    status: b.status,
+    sort_order: Number.parseInt(b.sort_order, 10) || 0,
+  };
+  const errors = [];
+  const file = b.image_file;
+  const hasFile = file && typeof file === 'object' && file.size > 0;
+  if (hasFile) {
+    if (!IMAGE_TYPES[file.type]) errors.push('Görsel JPG, PNG veya WEBP olmalı.');
+    else if (file.size > MAX_IMAGE) errors.push('Görsel en fazla 3 MB olabilir.');
+    else if (!c.env.IMAGES) errors.push('Görsel deposu (IMAGES) bağlı değil.');
+  } else if (b.image_url !== undefined) {
+    data.image = String(b.image_url).trim();
+  }
+
+  let result = errors.length ? { errors } : null;
+  if (!result) {
+    if (hasFile) {
+      const rand = [...crypto.getRandomValues(new Uint8Array(4))].map((x) => x.toString(16).padStart(2, '0')).join('');
+      const key = `${Date.now()}-${rand}${IMAGE_TYPES[file.type]}`;
+      await c.env.IMAGES.put(key, await file.arrayBuffer(), { metadata: { type: file.type } });
+      data.image = `/uploads/${key}`;
+    }
+    result = id ? await s.products.update(id, data) : await s.products.create(data);
+  }
+  if (result.errors) {
+    const current = id ? await s.products.getById(id) : emptyProduct;
+    return out(c, v.productFormPage(c.get('ctx'), {
+      product: { ...current, ...data, id }, history: id ? await s.products.history(id) : [], errors: result.errors,
+    }), 400);
+  }
+  return c.redirect(`/yonetim/urunler/${result.id}?kaydedildi=1`, 303);
+}
+
+admin.post('/urunler', (c) => saveProduct(c, null));
+admin.post('/urunler/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!(await c.get('s').products.getById(id))) return c.notFound();
+  return saveProduct(c, id);
+});
+
+// --- Siparişler ---
+admin.get('/siparisler', async (c) => {
+  const s = c.get('s');
+  const q = c.req.query();
+  const filter = {
+    status: ORDER_STATUSES.includes(q.durum) ? q.durum : '',
+    productId: Number(q.urun) || 0,
+    includeTest: q.test === '1',
+  };
+  const [orders, products] = await Promise.all([s.orders.list(filter), s.products.listAll()]);
+  return out(c, v.ordersPage(c.get('ctx'), { orders, filter, products }));
+});
+
+admin.get('/siparisler.csv', async (c) => {
+  const rows = await c.get('s').orders.list({ includeTest: c.req.query('test') === '1', limit: 100000 });
+  const cols = ['order_no', 'created_at', 'product_name', 'quantity', 'unit_price', 'unit_cost', 'shipping_cost', 'total',
+    'status', 'payment_method', 'payment_status', 'is_test', 'customer_name', 'phone', 'city', 'district', 'address', 'note',
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+  const money = new Set(['unit_price', 'unit_cost', 'shipping_cost', 'total']);
+  const esc = (val) => {
+    let str = String(val ?? '');
+    if (/^[=+\-@]/.test(str)) str = "'" + str; // Excel formül enjeksiyonunu önle
+    return /[";\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+  const lines = [cols.join(';')].concat(rows.map((r) => cols.map((k) => esc(money.has(k) ? (r[k] / 100).toFixed(2).replace('.', ',') : r[k])).join(';')));
+  return c.body('﻿' + lines.join('\n'), 200, {
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': `attachment; filename="siparisler-${todayTR()}.csv"`,
+  });
+});
+
+admin.get('/siparisler/:id', async (c) => {
+  const s = c.get('s');
+  const order = await s.orders.getById(c.req.param('id'));
+  if (!order) return c.notFound();
+  return out(c, v.orderPage(c.get('ctx'), { order, events: await s.orders.events(order.id) }));
+});
+
+admin.post('/siparisler/:id', async (c) => {
+  const s = c.get('s');
+  const id = Number(c.req.param('id'));
+  const order = await s.orders.getById(id);
+  if (!order) return c.notFound();
+  const b = await c.req.parseBody();
+  if (b.status) await s.orders.setStatus(id, b.status);
+  if (b.is_test !== undefined && Boolean(order.is_test) !== (b.is_test === '1')) await s.orders.setTest(id, b.is_test === '1');
+  if (b.payment_status && PAYMENT_STATUS_LABELS[b.payment_status] && b.payment_status !== order.payment_status) {
+    await s.orders.setPaymentStatus(id, b.payment_status);
+  }
+  await s.orders.addNote(id, b.note);
+  return c.redirect(`/yonetim/siparisler/${id}`, 303);
+});
+
+// --- Reklam harcamaları ---
+const adList = (db) => all(db.prepare(`SELECT a.*, p.name AS product_name FROM ad_spend a
+  JOIN products p ON p.id = a.product_id ORDER BY a.spend_date DESC, a.id DESC LIMIT 300`));
+
+admin.get('/reklam', async (c) => {
+  const s = c.get('s');
+  return out(c, v.adsPage(c.get('ctx'), {
+    list: await adList(s.db), products: await s.products.listAll(), errors: [],
+    form: { spend_date: todayTR(), channel: 'meta' },
+  }));
+});
+
+admin.post('/reklam', async (c) => {
+  const s = c.get('s');
+  const b = await c.req.parseBody();
+  const errors = [];
+  const product = await s.products.getById(b.product_id);
+  if (!product) errors.push('Ürün seçin.');
+  if (!isDate(b.spend_date)) errors.push('Geçerli bir tarih girin.');
+  if (!AD_CHANNELS.includes(b.channel)) errors.push('Kanal seçin.');
+  const amount = parseTRY(b.amount);
+  if (amount === null) errors.push('Harcama tutarını girin.');
+  if (errors.length) {
+    return out(c, v.adsPage(c.get('ctx'), { list: await adList(s.db), products: await s.products.listAll(), errors, form: b }), 400);
+  }
+  await s.db.prepare(`INSERT INTO ad_spend (product_id, spend_date, channel, amount, impressions, clicks, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`).bind(product.id, b.spend_date, b.channel, amount,
+    Math.max(0, Number.parseInt(b.impressions, 10) || 0), Math.max(0, Number.parseInt(b.clicks, 10) || 0),
+    String(b.note || '').trim().slice(0, 300)).run();
+  return c.redirect('/yonetim/reklam', 303);
+});
+
+admin.post('/reklam/:id/gecersiz', async (c) => {
+  await c.get('s').db.prepare('UPDATE ad_spend SET voided = 1 - voided WHERE id = ?').bind(Number(c.req.param('id'))).run();
+  return c.redirect('/yonetim/reklam', 303);
+});

@@ -1,0 +1,27 @@
+# Cloudflare Workers ayarları – AVM Milyoncu
+name = "avmmilyoncu"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+# Cloudflare panelinden eklenen değişkenler her yüklemede silinmesin.
+keep_vars = true
+
+# Statik dosyalar (CSS, logo, örnek ürün görselleri)
+[assets]
+directory = "./public"
+
+# Sipariş, ürün ve reklam veritabanı. İlk yüklemede Cloudflare otomatik oluşturur.
+[[d1_databases]]
+binding = "DB"
+database_name = "avmmilyoncu-db"
+
+# Panelden yüklenen ürün fotoğrafları. İlk yüklemede Cloudflare otomatik oluşturur.
+[[kv_namespaces]]
+binding = "IMAGES"
+
+[vars]
+# test: kartla ödeme simülasyon (gerçek para çekilmez). Gerçek ödeme sağlayıcısı bağlanana kadar test kalmalı.
+PAYMENT_MODE = "test"
+SITE_URL = "https://avmmilyoncu.com"
+
+[observability]
+enabled = true

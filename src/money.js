@@ -2,12 +2,12 @@
 
 const fmt = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
 
-function formatTRY(kurus) {
+export function formatTRY(kurus) {
   return fmt.format((Number(kurus) || 0) / 100);
 }
 
 // "1.299,90", "1299.90", "1299" gibi girdileri kuruşa çevirir.
-function parseTRY(input) {
+export function parseTRY(input) {
   if (input === undefined || input === null) return null;
   let s = String(input).trim().replace(/[₺\sTL]/gi, '');
   if (s === '') return null;
@@ -18,9 +18,7 @@ function parseTRY(input) {
 }
 
 // Form alanlarında gösterim için: 129990 -> "1299,90"
-function toInput(kurus) {
-  if (kurus === null || kurus === undefined) return '';
-  return (kurus / 100).toFixed(2).replace('.', ',');
+export function toInput(kurus) {
+  if (kurus === null || kurus === undefined || kurus === '') return '';
+  return (Number(kurus) / 100).toFixed(2).replace('.', ',');
 }
-
-module.exports = { formatTRY, parseTRY, toInput };

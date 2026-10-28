@@ -1,6 +1,4 @@
 node_modules/
-data/*.db
-data/*.db-*
-data/uploads/*
-!data/uploads/.gitkeep
+.wrangler/
+.dev.vars
 .env

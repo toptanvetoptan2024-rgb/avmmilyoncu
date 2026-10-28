@@ -1,5 +1,6 @@
-const config = require('./config');
-const { TZ_OFFSET } = require('./time');
+import { LOST_STATUSES } from './config.js';
+import { TZ_OFFSET } from './time.js';
+import { all } from './db.js';
 
 // Ürün bazında performans ve kârlılık raporu.
 //
@@ -10,13 +11,14 @@ const { TZ_OFFSET } = require('./time');
 //   Brüt kâr      = Ciro − Ürün maliyeti − Kargo
 //   Net kâr       = Brüt kâr − Reklam harcaması
 //   ROAS          = Ciro / Reklam harcaması
-//   Sipariş başı maliyet (CPA) = Reklam harcaması / geçerli sipariş sayısı
+//   Sipariş başı reklam maliyeti (CPA) = Reklam harcaması / geçerli sipariş sayısı
 // Test siparişleri ve geçersiz sayılan reklam kayıtları hesaba katılmaz.
 
-function productReport(db, { from, to }) {
-  const lost = config.lostStatuses.map((s) => `'${s}'`).join(',');
-  const dateExpr = `date(o.created_at, '${TZ_OFFSET}')`;
-  const rows = db.prepare(`
+const LOST = LOST_STATUSES.map((s) => `'${s}'`).join(',');
+const SUM_KEYS = ['views', 'spend', 'clicks', 'impressions', 'orders', 'valid_orders', 'lost_orders', 'units', 'revenue', 'cogs', 'shipping'];
+
+export async function productReport(db, { from, to }) {
+  const rows = await all(db.prepare(`
     SELECT p.id, p.name, p.slug, p.stage, p.status, p.price,
       COALESCE(v.views, 0) AS views,
       COALESCE(a.spend, 0) AS spend,
@@ -32,35 +34,32 @@ function productReport(db, { from, to }) {
     FROM products p
     LEFT JOIN (
       SELECT product_id, SUM(views) AS views FROM product_views
-      WHERE view_date BETWEEN @from AND @to GROUP BY product_id
+      WHERE view_date BETWEEN ? AND ? GROUP BY product_id
     ) v ON v.product_id = p.id
     LEFT JOIN (
       SELECT product_id, SUM(amount) AS spend, SUM(clicks) AS clicks, SUM(impressions) AS impressions
-      FROM ad_spend WHERE voided = 0 AND spend_date BETWEEN @from AND @to GROUP BY product_id
+      FROM ad_spend WHERE voided = 0 AND spend_date BETWEEN ? AND ? GROUP BY product_id
     ) a ON a.product_id = p.id
     LEFT JOIN (
-      SELECT o.product_id,
+      SELECT product_id,
         COUNT(*) AS orders,
-        SUM(o.status NOT IN (${lost})) AS valid_orders,
-        SUM(o.status IN (${lost})) AS lost_orders,
-        SUM(CASE WHEN o.status NOT IN (${lost}) THEN o.quantity ELSE 0 END) AS units,
-        SUM(CASE WHEN o.status NOT IN (${lost}) THEN o.total ELSE 0 END) AS revenue,
-        SUM(CASE WHEN o.status NOT IN (${lost}) THEN o.unit_cost * o.quantity ELSE 0 END) AS cogs,
-        SUM(CASE WHEN o.status != 'iptal' THEN o.shipping_cost ELSE 0 END) AS shipping
-      FROM orders o
-      WHERE o.is_test = 0 AND ${dateExpr} BETWEEN @from AND @to
-      GROUP BY o.product_id
+        SUM(status NOT IN (${LOST})) AS valid_orders,
+        SUM(status IN (${LOST})) AS lost_orders,
+        SUM(CASE WHEN status NOT IN (${LOST}) THEN quantity ELSE 0 END) AS units,
+        SUM(CASE WHEN status NOT IN (${LOST}) THEN total ELSE 0 END) AS revenue,
+        SUM(CASE WHEN status NOT IN (${LOST}) THEN unit_cost * quantity ELSE 0 END) AS cogs,
+        SUM(CASE WHEN status != 'iptal' THEN shipping_cost ELSE 0 END) AS shipping
+      FROM orders
+      WHERE is_test = 0 AND date(created_at, '${TZ_OFFSET}') BETWEEN ? AND ?
+      GROUP BY product_id
     ) o ON o.product_id = p.id
     ORDER BY p.status = 'pasif', CASE p.stage WHEN 'kazanan' THEN 0 WHEN 'potansiyel' THEN 1 ELSE 2 END, p.sort_order, p.id
-  `).all({ from, to });
+  `).bind(from, to, from, to, from, to));
 
   const withMetrics = rows.map(addMetrics);
-  const total = addMetrics(withMetrics.reduce((acc, r) => {
-    ['views', 'spend', 'clicks', 'impressions', 'orders', 'valid_orders', 'lost_orders', 'units', 'revenue', 'cogs', 'shipping']
-      .forEach((k) => { acc[k] = (acc[k] || 0) + r[k]; });
-    return acc;
-  }, { name: 'Toplam' }));
-  return { rows: withMetrics, total };
+  const totals = { name: 'Toplam' };
+  SUM_KEYS.forEach((k) => { totals[k] = withMetrics.reduce((s, r) => s + r[k], 0); });
+  return { rows: withMetrics, total: addMetrics(totals) };
 }
 
 function addMetrics(r) {
@@ -73,12 +72,11 @@ function addMetrics(r) {
     roas: r.spend > 0 ? r.revenue / r.spend : null,
     cpa: r.valid_orders > 0 && r.spend > 0 ? Math.round(r.spend / r.valid_orders) : null,
     conversion: r.views > 0 ? r.orders / r.views : null,
-    profit_per_order: r.valid_orders > 0 ? Math.round(net / r.valid_orders) : null,
   };
 }
 
 // Basit öneri: kâr ve ROAS'a göre ürünün ne yapılması gerektiği.
-function suggestion(r) {
+export function suggestion(r) {
   if (r.status === 'pasif') return '';
   if (r.spend === 0 && r.orders === 0) return 'Veri yok';
   if (r.valid_orders === 0 && r.spend > 0) return 'Sipariş yok – değiştirmeyi düşün';
@@ -87,19 +85,17 @@ function suggestion(r) {
   return 'Zararda – reklamı/fiyatı gözden geçir';
 }
 
-// Günlük seri (tek ürün veya tümü) – trend tablosu için.
-function dailySeries(db, { from, to, productId }) {
-  const lost = config.lostStatuses.map((s) => `'${s}'`).join(',');
-  const pf = productId ? 'AND product_id = @productId' : '';
-  const orders = db.prepare(`
+// Günlük seri – trend tablosu için.
+export async function dailySeries(db, { from, to }) {
+  const orders = await all(db.prepare(`
     SELECT date(created_at, '${TZ_OFFSET}') AS d, COUNT(*) AS orders,
-      SUM(CASE WHEN status NOT IN (${lost}) THEN total ELSE 0 END) AS revenue,
-      SUM(CASE WHEN status NOT IN (${lost}) THEN total - unit_cost * quantity - shipping_cost
+      SUM(CASE WHEN status NOT IN (${LOST}) THEN total ELSE 0 END) AS revenue,
+      SUM(CASE WHEN status NOT IN (${LOST}) THEN total - unit_cost * quantity - shipping_cost
                WHEN status = 'iade' THEN -shipping_cost ELSE 0 END) AS gross_profit
-    FROM orders WHERE is_test = 0 AND date(created_at, '${TZ_OFFSET}') BETWEEN @from AND @to ${pf}
-    GROUP BY d`).all({ from, to, productId });
-  const spend = db.prepare(`SELECT spend_date AS d, SUM(amount) AS spend FROM ad_spend
-    WHERE voided = 0 AND spend_date BETWEEN @from AND @to ${pf} GROUP BY d`).all({ from, to, productId });
+    FROM orders WHERE is_test = 0 AND date(created_at, '${TZ_OFFSET}') BETWEEN ? AND ?
+    GROUP BY d`).bind(from, to));
+  const spend = await all(db.prepare(`SELECT spend_date AS d, SUM(amount) AS spend FROM ad_spend
+    WHERE voided = 0 AND spend_date BETWEEN ? AND ? GROUP BY d`).bind(from, to));
   const map = new Map();
   const get = (d) => {
     if (!map.has(d)) map.set(d, { date: d, orders: 0, revenue: 0, gross_profit: 0, spend: 0 });
@@ -111,5 +107,3 @@ function dailySeries(db, { from, to, productId }) {
     .map((r) => ({ ...r, net_profit: r.gross_profit - r.spend }))
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
-
-module.exports = { productReport, dailySeries, suggestion };
