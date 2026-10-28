@@ -1,69 +1,69 @@
 # AVM Milyoncu
 
-**avmmilyoncu.com** – Popüler ürünleri reklamlarla tanıtıp satmak için hazırlanmış satış sitesi ve yönetim paneli.
-Tamamen **Cloudflare** üzerinde çalışır (Workers + D1 veritabanı + KV görsel deposu).
+**avmmilyoncu.com** – Çok satan ürünleri tek sayfada satan, mobil uyumlu e-ticaret sitesi ve yönetim paneli.
+Tamamen **Cloudflare** üzerinde çalışır (Workers + D1 veritabanı).
 
-## Neler var?
+## Müşteri ne görür?
 
-**Müşterinin gördüğü site**
-- Mobil öncelikli, hızlı ana sayfa ve ürün sayfaları (turuncu, beyaz, antrasit)
-- Reklam trafiğine uygun ürün sayfası: büyük görsel, indirimli fiyat, özellikler, sipariş formu, sık sorulan sorular, ekranın altında sabit "Sipariş Ver" butonu
-- Kapıda ödeme; kartla ödeme şimdilik yalnızca **test (simülasyon)** – gerçek para çekilmez
-- İletişim, iade, mesafeli satış sözleşmesi ve KVKK sayfaları (taslak metin)
-- Başlangıç ürünleri (örnek fiyatlarla): Elektrikli Isıtıcı, Şemsiye, Masaj Aleti
+Tek sayfada 4 adım:
+1. **Ürünlerinizi Seçin** – 3 ürün kartı: fotoğraf, ad, kısa açıklama, fiyat, eski fiyat ve indirim oranı, stok durumu, adet seçimi, Sepete Ekle.
+2. **Sepetiniz** – adet artır/azalt, ürün sil, ara toplam ve genel toplam. Sepet sayfa yenilense de korunur.
+3. **Adres Bilgilerinizi Girin** – ad, soyad, telefon, e-posta (isteğe bağlı), il, ilçe, mahalle, açık adres, posta kodu ve not (isteğe bağlı).
+4. **Siparişi Tamamla** – ödeme yöntemi, sözleşme onayı, sipariş özeti penceresi, ardından sipariş numarası.
 
-**Yönetim paneli** (`/yonetim`)
-- **Panel:** ürün bazında ziyaret, reklam harcaması, sipariş, dönüşüm, ciro, ROAS ve **net kâr**; her ürün için öneri
-- **Ürün yuvaları:** 3 kazanan + 3 potansiyel + 3 test (en fazla 9 aktif ürün)
-- **Ürünler:** fiyat, maliyet, kargo, fotoğraf ve metinleri formdan değiştirme; her değişiklik geçmişe kaydedilir
-- **Siparişler:** durum takibi, not ekleme, Excel'e (CSV) aktarma; hangi reklamdan geldiği (UTM) görünür
-- **Reklam:** günlük reklam harcamasını ürün ve kanal bazında girme
+## Ürünleri değiştirme (kod yazmadan)
 
-**Koruma kuralları**
-- Ürünler silinmez, **pasif** yapılır. Pasif ürünün sayfası açılmaya devam eder, eski reklam linkleri bozulmaz.
-- Siparişler silinmez, **iptal** durumuna alınır. Yanlış reklam kaydı **geçersiz** sayılır.
-- Sipariş anındaki fiyat ve maliyet siparişe kopyalanır; sonradan fiyat değişse de eski kâr hesapları doğru kalır.
-- Test siparişleri raporlara girmez.
+Tüm ürün bilgileri **`urunler.json`** dosyasındadır. GitHub'da dosyayı açıp kalem simgesine basarak düzenleyin:
 
-## Cloudflare'de yayınlama
+| Alan | Anlamı |
+|---|---|
+| `kod` | Ürünün sabit kimliği. **Değiştirmeyin** (geçmiş ve siparişler buna bağlı). |
+| `ad` | Ürün adı |
+| `kisaAciklama` | Kartta görünen kısa açıklama |
+| `fiyat` | Satış fiyatı (TL), örnek `1799` veya `1799.90` |
+| `eskiFiyat` | Üstü çizili eski fiyat; istemiyorsanız `null` |
+| `gorsel` | Fotoğraf yolu. Fotoğrafı `public/urunler/` klasörüne yükleyin, adını buraya yazın |
+| `stok` | `stokta`, `sinirli`, `tukendi` veya `teyit` (stok sipariş sonrası teyit edilir) |
+| `aktif` | `false` yapılırsa ürün sitede görünmez ama silinmez |
 
-1. Cloudflare panelinde **Workers & Pages → Create (Oluştur)** → **Workers** sekmesi → **Import a repository (Depo içe aktar)**.
-   *(Pages değil, Workers seçilmeli.)*
-2. GitHub'dan **avmmilyoncu** deposunu seçin.
-3. Ayarlar:
-   - Proje adı: `avmmilyoncu`
-   - Build command (Derleme komutu): boş bırakın
-   - Deploy command (Yükleme komutu): `npx wrangler deploy`
-4. **Deploy** düğmesine basın. Veritabanı (D1) ve görsel deposu (KV) ilk yüklemede **otomatik oluşturulur**.
-5. Yükleme bitince Worker'ın **Settings → Variables and Secrets** bölümüne gidin, **Add** ile:
-   - Tür **Secret**, ad `ADMIN_PASSWORD`, değer: yönetim paneli şifreniz
-   - (İsteğe bağlı, tür Text) `CONTACT_PHONE`, `CONTACT_EMAIL`, `CONTACT_WHATSAPP` (905xxxxxxxxx)
-6. **Settings → Domains & Routes → Add → Custom domain** ile `avmmilyoncu.com` ekleyin.
+Sitede en fazla 3 aktif ürün görünür. Ürün maliyeti ve kargo maliyeti gizli olduğu için dosyada değil, yönetim panelinde girilir.
 
-Bundan sonra GitHub'a gönderilen her değişiklik siteye otomatik yüklenir.
+## Mağaza ayarları
 
-## Kâr nasıl hesaplanır?
+**`magaza.json`** dosyası:
+- `odeme.kapidaOdeme`: Kapıda ödeme. **Kargo firmanız onaylayana kadar `false`**; `false` iken site sipariş almaz. Onay gelince `true` yapın.
+- `kargo.musteriKargoUcreti`: Müşteriden alınan kargo ücreti (TL). `0` = ücretsiz kargo.
+- `iletisim`: Telefon, e-posta, WhatsApp (boşsa sitede gösterilmez).
 
-```
-Net kâr = Ciro − Ürün maliyeti − Kargo − Reklam harcaması
-ROAS    = Ciro ÷ Reklam harcaması
-```
+Cloudflare'de ortam değişkeniyle de değiştirilebilir: `KAPIDA_ODEME` = `acik` / `kapali`.
 
-İptal ve iade edilen siparişler ciroya girmez. İade edilen siparişin kargo maliyeti zarar olarak düşülür.
+**Kart ödemesi:** Gerçek sanal POS (iyzico, PayTR vb.) bağlanmadığı için kapalıdır ve sitede "Yakında" yazar.
+Altyapı `src/payments.js` dosyasında hazırdır. Kart numarası ve CVV bu sitede hiçbir zaman alınmaz ve saklanmaz;
+müşteri sağlayıcının 3D Secure ödeme sayfasına yönlendirilir.
 
-## Reklam linkleri
+## Siparişler nerede saklanır?
 
-Reklamlarda ürün linkinin sonuna UTM ekleyin, siparişin hangi reklamdan geldiği kaydedilir:
+Siparişler **Cloudflare D1 veritabanında**, sunucu tarafında saklanır (tarayıcıda değil). Her sipariş tek kayıttır:
+ürünler, adetler, sipariş anındaki fiyatlar, toplam ve teslimat bilgileri. Aynı sipariş düğmeye iki kez basılsa
+da bir kez kaydedilir. Siparişler `/yonetim` panelinden görülür.
 
-```
-https://avmmilyoncu.com/urun/elektrikli-isitici?utm_source=meta&utm_campaign=isitici-video1
-```
+## Yönetim paneli (`/yonetim`)
 
-## Gerçek kart ödemesi (sonraki adım)
+Şifre **kodda yoktur**; Cloudflare'de gizli değer olarak tanımlanır:
+**Workers ve Pages → avmmilyoncu → Ayarlar → Değişkenler ve Gizli Diziler → + Ekle** →
+Tür: **Gizli (Secret)**, ad: `ADMIN_PASSWORD`, değer: şifreniz → **Dağıt**.
+(Yapılar/Derleme bölümündeki "derleme değişkenleri" panele ulaşmaz.) Şifre tanımlanmadan panel tamamen kilitlidir.
 
-`src/payments.js` dosyasında gerçek ödeme için hazır bir yer var. iyzico veya PayTR gibi bir sağlayıcı seçildiğinde
-önce sağlayıcının **test (sandbox)** anahtarlarıyla denenir; her şey doğru çalışınca `wrangler.toml` içinde
-`PAYMENT_MODE = "live"` yapılır. Canlı modda sağlayıcı bağlı değilse kart seçeneği sitede hiç görünmez.
+Panelde: kâr/ROAS raporu, ürün yuvaları (3 kazanan + 3 potansiyel + 3 test), maliyet girişi, siparişler (durum, not,
+Excel'e aktarma), günlük reklam harcaması.
+
+## Cloudflare kurulumu
+
+- Proje türü: **Workers** (Pages değil), GitHub deposuna bağlı.
+- Derleme komutu: boş. Dağıtım komutu: `npx wrangler deploy`. Kök dizin: `/`.
+- Statik dosyalar `public/` klasöründen yayınlanır (`wrangler.toml` → `[assets]`).
+- D1 veritabanı ilk yüklemede otomatik oluşturulur; tablolar ve sürüm geçişleri ilk istekte otomatik uygulanır.
+- Cloudflare'de "Üretim dalı" olarak hangi dal seçiliyse, o dala gönderilen her değişiklik siteye otomatik yüklenir.
 
 ## Geliştirici notları
 
@@ -71,28 +71,30 @@ https://avmmilyoncu.com/urun/elektrikli-isitici?utm_source=meta&utm_campaign=isi
 npm install
 ```
 
-Bilgisayarda Cloudflare ortamıyla çalıştırmak için `.dev.vars.example` dosyasını `.dev.vars` adıyla kopyalayın, sonra:
+```bash
+npm test
+```
+
+Bilgisayarda Cloudflare ortamıyla denemek için `.dev.vars.example` dosyasını `.dev.vars` adıyla kopyalayın:
 
 ```bash
 npm run dev
 ```
 
-Testler:
-
-```bash
-npm test
 ```
-
-```
-wrangler.toml        Cloudflare ayarları (D1, KV, statik dosyalar)
-src/index.js         Uygulamanın giriş noktası
-src/db.js            Veritabanı tabloları (ilk istekte otomatik kurulur) ve ilk 3 ürün
-src/products.js      Ürün kuralları (3+3+3 yuva, değişiklik geçmişi)
-src/orders.js        Sipariş oluşturma ve durumlar
+urunler.json         Ürünler (kod yazmadan düzenlenir)
+magaza.json          Ödeme, kargo, iletişim ayarları
+wrangler.toml        Cloudflare ayarları
+src/index.js         Uygulama girişi, güvenlik başlıkları
+src/catalog.js       urunler.json / magaza.json okuma ve veritabanına işleme
+src/db.js            Veritabanı tabloları ve sürüm geçişleri
+src/orders.js        Sipariş doğrulama ve kayıt
+src/payments.js      Ödeme yöntemleri ve sanal POS altyapısı
 src/reports.js       Kâr / ROAS raporu
-src/payments.js      Ödeme katmanı (test modu)
-src/routes/          Site ve yönetim paneli adresleri
+src/routes/          Mağaza (/ ve /api/siparis) ve yönetim (/yonetim) adresleri
 src/views/           Sayfa şablonları
-public/              Tasarım (CSS) ve görseller
+public/js/magaza.js  Sepet ve sipariş formu (tarayıcı)
+public/css/style.css Tasarım
+public/urunler/      Ürün fotoğrafları
 test/                Otomatik testler
 ```

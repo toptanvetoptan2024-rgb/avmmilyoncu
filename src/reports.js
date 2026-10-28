@@ -5,9 +5,10 @@ import { all } from './db.js';
 // Ürün bazında performans ve kârlılık raporu.
 //
 // Hesap:
-//   Ciro          = geçerli siparişlerin toplamı (iptal ve iade hariç)
+//   Ciro          = geçerli siparişlerdeki ürün tutarları (iptal ve iade hariç, müşteriden alınan kargo ücreti hariç)
 //   Ürün maliyeti = geçerli siparişlerde adet × sipariş anındaki birim maliyet
-//   Kargo         = geçerli + iade siparişlerin kargo maliyeti (iade de kargoya çıktı)
+//   Kargo         = bizim ödediğimiz kargo − müşteriden alınan kargo ücreti (iadede tamamı zarar);
+//                   çok ürünlü siparişte ürünlere ciro payına göre dağıtılır
 //   Brüt kâr      = Ciro − Ürün maliyeti − Kargo
 //   Net kâr       = Brüt kâr − Reklam harcaması
 //   ROAS          = Ciro / Reklam harcaması
@@ -41,17 +42,20 @@ export async function productReport(db, { from, to }) {
       FROM ad_spend WHERE voided = 0 AND spend_date BETWEEN ? AND ? GROUP BY product_id
     ) a ON a.product_id = p.id
     LEFT JOIN (
-      SELECT product_id,
-        COUNT(*) AS orders,
-        SUM(status NOT IN (${LOST})) AS valid_orders,
-        SUM(status IN (${LOST})) AS lost_orders,
-        SUM(CASE WHEN status NOT IN (${LOST}) THEN quantity ELSE 0 END) AS units,
-        SUM(CASE WHEN status NOT IN (${LOST}) THEN total ELSE 0 END) AS revenue,
-        SUM(CASE WHEN status NOT IN (${LOST}) THEN unit_cost * quantity ELSE 0 END) AS cogs,
-        SUM(CASE WHEN status != 'iptal' THEN shipping_cost ELSE 0 END) AS shipping
-      FROM orders
-      WHERE is_test = 0 AND date(created_at, '${TZ_OFFSET}') BETWEEN ? AND ?
-      GROUP BY product_id
+      SELECT i.product_id,
+        COUNT(DISTINCT o.id) AS orders,
+        COUNT(DISTINCT CASE WHEN o.status NOT IN (${LOST}) THEN o.id END) AS valid_orders,
+        COUNT(DISTINCT CASE WHEN o.status IN (${LOST}) THEN o.id END) AS lost_orders,
+        SUM(CASE WHEN o.status NOT IN (${LOST}) THEN i.quantity ELSE 0 END) AS units,
+        SUM(CASE WHEN o.status NOT IN (${LOST}) THEN i.quantity * i.unit_price ELSE 0 END) AS revenue,
+        SUM(CASE WHEN o.status NOT IN (${LOST}) THEN i.quantity * i.unit_cost ELSE 0 END) AS cogs,
+        -- Siparişin net kargo maliyeti, ürünlere ciro payına göre dağıtılır.
+        ROUND(SUM(CASE WHEN o.status = 'iptal' OR o.subtotal = 0 THEN 0
+          WHEN o.status = 'iade' THEN o.shipping_cost * 1.0 * i.quantity * i.unit_price / o.subtotal
+          ELSE (o.shipping_cost - o.shipping_fee) * 1.0 * i.quantity * i.unit_price / o.subtotal END)) AS shipping
+      FROM order_items i JOIN orders o ON o.id = i.order_id
+      WHERE o.is_test = 0 AND date(o.created_at, '${TZ_OFFSET}') BETWEEN ? AND ?
+      GROUP BY i.product_id
     ) o ON o.product_id = p.id
     ORDER BY p.status = 'pasif', CASE p.stage WHEN 'kazanan' THEN 0 WHEN 'potansiyel' THEN 1 ELSE 2 END, p.sort_order, p.id
   `).bind(from, to, from, to, from, to));
@@ -88,11 +92,13 @@ export function suggestion(r) {
 // Günlük seri – trend tablosu için.
 export async function dailySeries(db, { from, to }) {
   const orders = await all(db.prepare(`
-    SELECT date(created_at, '${TZ_OFFSET}') AS d, COUNT(*) AS orders,
-      SUM(CASE WHEN status NOT IN (${LOST}) THEN total ELSE 0 END) AS revenue,
-      SUM(CASE WHEN status NOT IN (${LOST}) THEN total - unit_cost * quantity - shipping_cost
-               WHEN status = 'iade' THEN -shipping_cost ELSE 0 END) AS gross_profit
-    FROM orders WHERE is_test = 0 AND date(created_at, '${TZ_OFFSET}') BETWEEN ? AND ?
+    SELECT date(o.created_at, '${TZ_OFFSET}') AS d, COUNT(*) AS orders,
+      SUM(CASE WHEN o.status NOT IN (${LOST}) THEN o.subtotal ELSE 0 END) AS revenue,
+      SUM(CASE WHEN o.status NOT IN (${LOST}) THEN o.subtotal - COALESCE(c.cogs, 0) - o.shipping_cost + o.shipping_fee
+               WHEN o.status = 'iade' THEN -o.shipping_cost ELSE 0 END) AS gross_profit
+    FROM orders o
+    LEFT JOIN (SELECT order_id, SUM(quantity * unit_cost) AS cogs FROM order_items GROUP BY order_id) c ON c.order_id = o.id
+    WHERE o.is_test = 0 AND date(o.created_at, '${TZ_OFFSET}') BETWEEN ? AND ?
     GROUP BY d`).bind(from, to));
   const spend = await all(db.prepare(`SELECT spend_date AS d, SUM(amount) AS spend FROM ad_spend
     WHERE voided = 0 AND spend_date BETWEEN ? AND ? GROUP BY d`).bind(from, to));

@@ -5,6 +5,7 @@
 // reklam harcamaları "geçersiz" işaretlenir. Böylece performans geçmişi korunur.
 //
 // Tablolar ilk istekte otomatik oluşturulur; ayrıca bir kurulum komutu gerekmez.
+// Ürünler urunler.json dosyasından gelir (bkz. catalog.js).
 // Yeni bir değişiklik gerektiğinde MIGRATIONS listesinin SONUNA eklenir.
 
 const MIGRATIONS = [
@@ -99,39 +100,40 @@ const MIGRATIONS = [
     `CREATE TRIGGER IF NOT EXISTS no_delete_history BEFORE DELETE ON product_history
       BEGIN SELECT RAISE(ABORT, 'Geçmiş kayıtları silinemez.'); END`,
   ],
+  // 2: Çok ürünlü sepet siparişleri, ayrıntılı adres, tekrar gönderim koruması, stok durumu.
+  [
+    `ALTER TABLE products ADD COLUMN stock TEXT NOT NULL DEFAULT 'teyit'`,
+    `CREATE TABLE IF NOT EXISTS order_items (
+      id INTEGER PRIMARY KEY,
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      product_name TEXT NOT NULL,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      unit_price INTEGER NOT NULL,
+      unit_cost INTEGER NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id)`,
+    // Eski tek ürünlü siparişleri yeni tabloya taşı (eski kayıtlar silinmez).
+    `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost)
+      SELECT id, product_id, product_name, quantity, unit_price, unit_cost FROM orders`,
+    `ALTER TABLE orders ADD COLUMN first_name TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE orders ADD COLUMN last_name TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE orders ADD COLUMN email TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE orders ADD COLUMN neighborhood TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE orders ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE orders ADD COLUMN subtotal INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE orders ADD COLUMN shipping_fee INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE orders ADD COLUMN idempotency_key TEXT NOT NULL DEFAULT ''`,
+    `UPDATE orders SET subtotal = total`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency ON orders(idempotency_key) WHERE idempotency_key != ''`,
+    `CREATE TRIGGER IF NOT EXISTS no_delete_order_items BEFORE DELETE ON order_items
+      BEGIN SELECT RAISE(ABORT, 'Sipariş kalemleri silinemez.'); END`,
+  ],
 ];
 
-const SEED_PRODUCTS = [
-  {
-    slug: 'elektrikli-isitici',
-    name: 'Elektrikli Isıtıcı',
-    headline: 'Saniyeler içinde sıcacık bir oda',
-    description: 'Kompakt tasarımı ve sessiz çalışmasıyla ev ve ofis için pratik ısınma çözümü.',
-    features: 'Hızlı ısınma\nSessiz çalışma\nDevrilme emniyeti\nKolay taşınır kompakt gövde',
-    price: 89900, compare_price: 129900, unit_cost: 42000, shipping_cost: 6000,
-    image: '/img/isitici.svg', sort_order: 1,
-  },
-  {
-    slug: 'semsiye',
-    name: 'Rüzgara Dayanıklı Şemsiye',
-    headline: 'Rüzgarda ters dönmeyen sağlam şemsiye',
-    description: 'Güçlendirilmiş iskeleti ve tek tuşla açılıp kapanma özelliğiyle her havaya hazır.',
-    features: 'Rüzgara dayanıklı iskelet\nTek tuşla aç-kapa\nSu itici kumaş\nÇantaya sığar',
-    price: 34900, compare_price: 49900, unit_cost: 12000, shipping_cost: 5000,
-    image: '/img/semsiye.svg', sort_order: 2,
-  },
-  {
-    slug: 'masaj-aleti',
-    name: 'Masaj Aleti',
-    headline: 'Günün yorgunluğunu dakikalar içinde atın',
-    description: 'Farklı yoğunluk seviyeleriyle boyun, sırt ve bacaklar için rahatlatıcı masaj.',
-    features: 'Çok kademeli yoğunluk\nŞarjlı, kablosuz kullanım\nFarklı masaj başlıkları\nSessiz motor',
-    price: 59900, compare_price: 89900, unit_cost: 25000, shipping_cost: 6000,
-    image: '/img/masaj.svg', sort_order: 3,
-  },
-];
-const SEED_FAQ = 'Kargo ne zaman çıkar? | Siparişler 1-2 iş günü içinde kargoya verilir.\n'
-  + 'Kapıda ödeme var mı? | Evet, kapıda nakit veya kartla ödeyebilirsiniz.';
+// Testler için dışa açık.
+export { MIGRATIONS };
 
 let readyFor = null;
 
@@ -145,13 +147,6 @@ export async function ensureSchema(db) {
     stmts.push(db.prepare(`INSERT INTO _meta (key, value) VALUES ('schema_version', ?)
       ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(String(v + 1)));
     await db.batch(stmts);
-  }
-  const count = await db.prepare('SELECT COUNT(*) AS n FROM products').first();
-  if (count.n === 0) {
-    await db.batch(SEED_PRODUCTS.map((p) => db.prepare(`INSERT INTO products
-      (slug, name, headline, description, features, faq, price, compare_price, unit_cost, shipping_cost, image, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(p.slug, p.name, p.headline, p.description, p.features,
-      SEED_FAQ, p.price, p.compare_price, p.unit_cost, p.shipping_cost, p.image, p.sort_order)));
   }
   readyFor = db;
 }

@@ -2,12 +2,13 @@ import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { todayTR } from '../time.js';
 import { isAdmin } from '../auth.js';
-import {
-  homePage, productPage, thanksPage, testPaymentPage, infoPage, PAGES,
-} from '../views/shop.js';
+import { MAX_SHOWN } from '../catalog.js';
+import { paymentOptions, enabledMethods } from '../payments.js';
+import { homePage, infoPage, PAGES } from '../views/shop.js';
 
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
 const BOT_RE = /bot|crawl|spider|slurp|facebookexternalhit|preview|headless/i;
+const MAX_BODY = 20 * 1024;
 
 export const shop = new Hono();
 
@@ -26,95 +27,97 @@ shop.use('*', async (c, next) => {
   await next();
 });
 
+const shownProducts = async (s) => (await s.products.listActive()).slice(0, MAX_SHOWN);
+
 shop.get('/', async (c) => {
   const s = c.get('s');
-  return c.html(homePage(c.get('ctx'), await s.products.listActive()).toString());
+  const ctx = c.get('ctx');
+  const products = await shownProducts(s);
+  const highlight = products.some((p) => p.slug === c.req.query('urun')) ? c.req.query('urun') : '';
+  const admin = await isAdmin(c, ctx.rt.sessionSecret);
+  c.header('Cache-Control', 'no-store');
+  return c.html(homePage(ctx, { products, options: paymentOptions(ctx.store, { admin }), highlight, admin }).toString());
 });
 
-async function renderProduct(c, product, form, errors, status = 200) {
-  const s = c.get('s');
-  const others = (await s.products.listActive()).filter((p) => p.id !== product.id).slice(0, 3);
-  const page = productPage(c.get('ctx'), { product, others, methods: s.payments.availableMethods(), form, errors });
-  return c.html(page.toString(), status);
-}
-
+// Reklam linkleri için: /urun/<kod> → ziyareti sayar ve ana sayfada ürünü öne çıkarır.
 shop.get('/urun/:slug', async (c) => {
   const s = c.get('s');
   const product = await s.products.getBySlug(c.req.param('slug'));
-  if (!product) return c.notFound();
+  if (!product || product.status !== 'aktif') return c.redirect('/', 302);
   const admin = await isAdmin(c, c.get('ctx').rt.sessionSecret);
-  if (product.status === 'aktif' && !admin && !BOT_RE.test(c.req.header('user-agent') || '')) {
+  if (!admin && !BOT_RE.test(c.req.header('user-agent') || '')) {
     await s.db.prepare(`INSERT INTO product_views (product_id, view_date, views) VALUES (?, ?, 1)
       ON CONFLICT(product_id, view_date) DO UPDATE SET views = views + 1`).bind(product.id, todayTR()).run();
   }
-  // Pasif ürünün sayfası silinmez: eski reklam linkleri diğer ürünlere yönlendirir.
-  return renderProduct(c, product, { quantity: 1, payment_method: 'kapida' }, []);
+  return c.redirect(`/?urun=${encodeURIComponent(product.slug)}#urun-${product.slug}`, 302);
 });
 
-shop.post('/siparis', async (c) => {
-  const s = c.get('s');
-  const body = await c.req.parseBody();
-  const product = await s.products.getById(body.product_id);
-  if (!product) return c.notFound();
-  // Bot tuzağı: gerçek kullanıcı bu alanı görmez.
-  if (body.website) return c.redirect(`/urun/${product.slug}`, 303);
-  const methods = s.payments.availableMethods();
-  const form = { ...body, payment_method: methods[body.payment_method] ? body.payment_method : '' };
-  const preErrors = body.onay ? [] : ['Mesafeli satış sözleşmesini onaylayın.'];
-  const result = await s.orders.create({
-    ...form,
-    ...c.get('utm'),
-    product,
-    preErrors,
-    referrer: c.req.header('referer') || '',
-    is_test: form.payment_method === 'kart' && s.payments.isTestMode(),
-  });
-  if (result.errors) return renderProduct(c, product, form, result.errors, 400);
-  return c.redirect(s.payments.start(result.order).redirect, 303);
-});
-
-shop.get('/siparis/:no', async (c) => {
-  const order = await c.get('s').orders.getByNo(c.req.param('no'));
-  if (!order) return c.notFound();
-  return c.html(thanksPage(c.get('ctx'), order).toString());
-});
-
-// TEST ödeme sayfası: yalnızca test modunda çalışır, gerçek para çekilmez.
-async function testOrder(c) {
-  const s = c.get('s');
-  if (!s.payments.isTestMode()) return null;
-  const order = await s.orders.getByNo(c.req.param('no'));
-  return order && order.payment_method === 'kart' ? order : null;
+// Basit kötüye kullanım sınırı: aynı IP'den 10 dakikada en fazla 10 sipariş denemesi (her Cloudflare sunucusunda ayrı).
+const hits = new Map();
+function rateLimited(ip) {
+  const now = Date.now();
+  const h = (hits.get(ip) || []).filter((t) => now - t < 10 * 60000);
+  h.push(now);
+  hits.set(ip, h);
+  if (hits.size > 5000) hits.clear();
+  return h.length > 10;
 }
 
-shop.get('/odeme/test/:no', async (c) => {
-  const order = await testOrder(c);
-  if (!order) return c.notFound();
-  return c.html(testPaymentPage(c.get('ctx'), order).toString());
-});
-
-shop.post('/odeme/test/:no', async (c) => {
+shop.post('/api/siparis', async (c) => {
   const s = c.get('s');
-  const order = await testOrder(c);
-  if (!order || order.payment_status !== 'bekliyor') return c.notFound();
-  const ok = (await c.req.parseBody()).sonuc === 'basarili';
-  await s.orders.setPaymentStatus(order.id, ok ? 'odendi' : 'basarisiz', ok ? 'TEST ödeme başarılı' : 'TEST ödeme başarısız');
-  if (!ok) await s.orders.setStatus(order.id, 'iptal');
-  return c.redirect(`/siparis/${order.order_no}`, 303);
-});
+  const ctx = c.get('ctx');
+  const fail = (status, errors) => c.json({ ok: false, errors }, status);
 
-// Ürün görselleri (Cloudflare KV'de saklanır).
-shop.get('/uploads/:key', async (c) => {
-  const kv = c.env.IMAGES;
-  if (!kv) return c.notFound();
-  const { value, metadata } = await kv.getWithMetadata(c.req.param('key'), 'arrayBuffer');
-  if (!value) return c.notFound();
-  return new Response(value, {
-    headers: {
-      'Content-Type': metadata?.type || 'application/octet-stream',
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
+  // Başka sitelerden gönderilen isteklere izin verme.
+  const origin = c.req.header('origin');
+  if (origin) {
+    let host = '';
+    try { host = new URL(origin).host; } catch { /* geçersiz */ }
+    if (host !== new URL(c.req.url).host) return fail(403, { genel: 'İzin verilmeyen istek.' });
+  }
+  if (!(c.req.header('content-type') || '').includes('application/json')) return fail(415, { genel: 'Geçersiz istek.' });
+  if (Number(c.req.header('content-length') || 0) > MAX_BODY) return fail(413, { genel: 'İstek çok büyük.' });
+  // Cloudflare gerçek ortamda her isteğe cf-connecting-ip ekler; yerel denemelerde sınır uygulanmaz.
+  const ip = c.req.header('cf-connecting-ip');
+  if (ip && rateLimited(ip)) {
+    return fail(429, { genel: 'Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.' });
+  }
+
+  let body;
+  try {
+    const raw = await c.req.text();
+    if (raw.length > MAX_BODY) return fail(413, { genel: 'İstek çok büyük.' });
+    body = JSON.parse(raw);
+  } catch { return fail(400, { genel: 'Geçersiz istek.' }); }
+  if (!body || typeof body !== 'object') return fail(400, { genel: 'Geçersiz istek.' });
+  if (body.website) return fail(400, { genel: 'Geçersiz istek.' }); // bot tuzağı
+
+  const admin = await isAdmin(c, ctx.rt.sessionSecret);
+  const result = await s.orders.create({ ...body, ...c.get('utm'), referrer: c.req.header('referer') || '' }, {
+    products: await shownProducts(s),
+    methods: enabledMethods(ctx.store, { admin }),
+    shippingFee: ctx.store.shippingFee,
   });
+  if (result.errors) return fail(400, result.errors);
+
+  const o = result.order;
+  return c.json({
+    ok: true,
+    tekrar: result.duplicate,
+    test: o.is_test === 1,
+    siparisNo: o.order_no,
+    ozet: {
+      urunler: result.items.map((i) => ({ ad: i.product_name, adet: i.quantity, birimFiyat: i.unit_price, tutar: i.quantity * i.unit_price })),
+      araToplam: o.subtotal,
+      kargo: o.shipping_fee,
+      toplam: o.total,
+      odeme: o.payment_method,
+      teslimat: {
+        adSoyad: o.customer_name, telefon: o.phone, il: o.city, ilce: o.district, mahalle: o.neighborhood,
+        adres: o.address, postaKodu: o.postal_code,
+      },
+    },
+  }, result.duplicate ? 200 : 201);
 });
 
 shop.get('/:page', (c) => {
