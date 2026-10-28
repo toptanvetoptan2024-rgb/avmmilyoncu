@@ -1,0 +1,34 @@
+# Render.com kurulum dosyası. Render'da "New > Blueprint" ile bu depo seçilince
+# sunucu, kalıcı disk ve ayarlar otomatik oluşturulur.
+services:
+  - type: web
+    name: avmmilyoncu
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PAYMENT_MODE
+        value: test
+      - key: SITE_URL
+        value: https://avmmilyoncu.com
+      - key: DB_PATH
+        value: /var/data/avmmilyoncu.db
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: CONTACT_PHONE
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+    disk:
+      name: veri
+      mountPath: /var/data
+      sizeGB: 1
