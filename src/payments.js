@@ -12,8 +12,10 @@
 
 export const CARD_PROVIDER = null; // Henüz bağlı değil.
 
-export function paymentOptions(store) {
-  return [
+// admin: yönetim paneline giriş yapmış kişi. Yalnızca ona "Test siparişi" seçeneği gösterilir;
+// bu siparişler test olarak işaretlenir, raporlara ve reklam piksellerine gitmez.
+export function paymentOptions(store, { admin = false } = {}) {
+  const options = [
     {
       code: 'kapida',
       title: 'Kapıda Ödeme',
@@ -29,8 +31,15 @@ export function paymentOptions(store) {
       note: CARD_PROVIDER ? '' : 'Yakında',
     },
   ];
+  if (admin) {
+    options.push({
+      code: 'test', title: 'Test Siparişi', description: 'Yalnızca yönetici görür. Raporlara ve reklamlara yansımaz.',
+      enabled: true, note: 'Yönetici',
+    });
+  }
+  return options;
 }
 
-export function enabledMethods(store) {
-  return paymentOptions(store).filter((m) => m.enabled).map((m) => m.code);
+export function enabledMethods(store, opts) {
+  return paymentOptions(store, opts).filter((m) => m.enabled).map((m) => m.code);
 }

@@ -21,7 +21,7 @@ export function adminLayout(ctx, { title, path, hideNav }, body) {
   <meta name="robots" content="noindex">
   <title>${title} · Yönetim</title>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css?v=4">
+  <link rel="stylesheet" href="/css/style.css?v=5">
 </head>
 <body class="admin">
 <header class="site-header">

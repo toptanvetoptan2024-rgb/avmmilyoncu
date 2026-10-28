@@ -34,7 +34,9 @@ shop.get('/', async (c) => {
   const ctx = c.get('ctx');
   const products = await shownProducts(s);
   const highlight = products.some((p) => p.slug === c.req.query('urun')) ? c.req.query('urun') : '';
-  return c.html(homePage(ctx, { products, options: paymentOptions(ctx.store), highlight }).toString());
+  const admin = await isAdmin(c, ctx.rt.sessionSecret);
+  c.header('Cache-Control', 'no-store');
+  return c.html(homePage(ctx, { products, options: paymentOptions(ctx.store, { admin }), highlight, admin }).toString());
 });
 
 // Reklam linkleri için: /urun/<kod> → ziyareti sayar ve ana sayfada ürünü öne çıkarır.
@@ -90,9 +92,10 @@ shop.post('/api/siparis', async (c) => {
   if (!body || typeof body !== 'object') return fail(400, { genel: 'Geçersiz istek.' });
   if (body.website) return fail(400, { genel: 'Geçersiz istek.' }); // bot tuzağı
 
+  const admin = await isAdmin(c, ctx.rt.sessionSecret);
   const result = await s.orders.create({ ...body, ...c.get('utm'), referrer: c.req.header('referer') || '' }, {
     products: await shownProducts(s),
-    methods: enabledMethods(ctx.store),
+    methods: enabledMethods(ctx.store, { admin }),
     shippingFee: ctx.store.shippingFee,
   });
   if (result.errors) return fail(400, result.errors);
@@ -101,6 +104,7 @@ shop.post('/api/siparis', async (c) => {
   return c.json({
     ok: true,
     tekrar: result.duplicate,
+    test: o.is_test === 1,
     siparisNo: o.order_no,
     ozet: {
       urunler: result.items.map((i) => ({ ad: i.product_name, adet: i.quantity, birimFiyat: i.unit_price, tutar: i.quantity * i.unit_price })),

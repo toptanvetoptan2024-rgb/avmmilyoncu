@@ -92,11 +92,14 @@ export function orderService(db) {
 
     const { values: c, errors: formErrors } = validateCustomer(input);
     Object.assign(errors, formErrors);
-    const method = String(input.odemeYontemi || '');
+    let method = String(input.odemeYontemi || '');
+    let isTest = 0;
     if (!ctx.methods.includes(method)) {
       errors.odeme = ctx.methods.length ? 'Ödeme yöntemi seçin.' : 'Şu anda online sipariş alınmıyor.';
     }
     if (Object.keys(errors).length) return { errors };
+    // Yönetici test siparişi: kapıda ödeme gibi kaydedilir ama test olarak işaretlenir.
+    if (method === 'test') { method = 'kapida'; isTest = 1; }
 
     const subtotal = lines.reduce((s, l) => s + l.p.price * l.qty, 0);
     const shippingCost = Math.max(...lines.map((l) => l.p.shipping_cost || 0));
@@ -113,16 +116,17 @@ export function orderService(db) {
             subtotal, shipping_fee, total, customer_name, first_name, last_name, phone, email, city, district, neighborhood,
             address, postal_code, note, payment_method, is_test, utm_source, utm_medium, utm_campaign, utm_content, referrer,
             idempotency_key)
-            VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`).bind(
+            VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
             orderNo, lines[0].p.id, summary, units, shippingCost, subtotal, shippingFee, subtotal + shippingFee,
             `${c.first_name} ${c.last_name}`, c.first_name, c.last_name, c.phone, c.email, c.city, c.district,
-            c.neighborhood, c.address, c.postal_code, c.note, method,
+            c.neighborhood, c.address, c.postal_code, c.note, method, isTest,
             text(input.utm_source, 100), text(input.utm_medium, 100), text(input.utm_campaign, 200), text(input.utm_content, 200),
             text(input.referrer, 300), key,
           ),
           ...lines.map((l) => db.prepare(`INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost)
             VALUES (${orderId}, ?, ?, ?, ?, ?)`).bind(l.p.id, l.p.name, l.qty, l.p.price, l.p.unit_cost || 0)),
-          db.prepare(`INSERT INTO order_events (order_id, event) VALUES (${orderId}, 'Sipariş oluşturuldu')`),
+          db.prepare(`INSERT INTO order_events (order_id, event) VALUES (${orderId}, ?)`)
+            .bind(isTest ? 'Yönetici test siparişi oluşturuldu' : 'Sipariş oluşturuldu'),
         ]);
         const order = await getByNo(orderNo);
         return { order, items: await items(order.id), duplicate: false };

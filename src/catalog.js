@@ -61,8 +61,24 @@ export function readStore(env = {}, source = magazaDosyasi) {
     cashOnDeliveryText: s.odeme?.kapidaOdemeAciklama || 'Kapıda ödeme',
     shippingFee: fee,
     deliveryText: s.kargo?.teslimSuresi || '',
+    ads: readAds(env, s.reklam || {}),
   };
 }
+
+// Reklam pikselleri. Kimlikler biçim olarak doğrulanır; hatalı olan yok sayılır.
+function readAds(env, r) {
+  const pick = (envVal, fileVal, re) => {
+    const v = String(envVal || fileVal || '').trim();
+    return re.test(v) ? v : '';
+  };
+  return {
+    meta: pick(env.META_PIXEL_ID, r.metaPikselId, /^\d{8,20}$/),
+    tiktok: pick(env.TIKTOK_PIXEL_ID, r.tiktokPikselId, /^[A-Z0-9]{10,30}$/),
+    google: pick(env.GOOGLE_TAG_ID, r.googleEtiketId, /^(G|AW)-[A-Z0-9]{4,20}$/),
+  };
+}
+
+export const hasAds = (store) => Boolean(store.ads.meta || store.ads.tiktok || store.ads.google);
 
 const TRACKED = ['name', 'headline', 'price', 'compare_price', 'image', 'stock', 'status'];
 let syncedFor = null;

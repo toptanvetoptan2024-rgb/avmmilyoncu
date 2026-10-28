@@ -25,6 +25,11 @@
     return null;
   }
 
+  // ---------- Reklam olayları (reklam.js çerez onayına göre işler) ----------
+  window.avmOlaylar = window.avmOlaylar || [];
+  function track(ad, veri) { try { window.avmOlaylar.push({ ad: ad, veri: veri }); } catch (e) { /* yoksay */ } }
+  function itemsOf(ls) { return ls.map(function (l) { return { kod: l.p.kod, ad: l.p.ad, adet: l.adet, fiyat: l.p.fiyat }; }); }
+
   // ---------- Sepet ----------
   var cart = {};
   try { cart = JSON.parse(store(CART_KEY) || '{}') || {}; } catch (e) { cart = {}; }
@@ -99,6 +104,8 @@
       var before = cart[kod] || 0;
       cart[kod] = Math.min(before + add, MAX);
       renderCart();
+      var added = cart[kod] - before;
+      if (added > 0) track('sepete_ekle', { urunler: [{ kod: kod, ad: products[kod].ad, adet: added, fiyat: products[kod].fiyat }], tutar: products[kod].fiyat * added });
       input.value = 1;
       toast(cart[kod] === MAX && before + add > MAX
         ? 'Bir üründen en fazla ' + MAX + ' adet alınabilir.'
@@ -223,6 +230,7 @@
       adSoyad: v.ad + ' ' + v.soyad, telefon: cleanPhone(v.telefon), adres: v.adres, mahalle: v.mahalle, ilce: v.ilce, il: v.il, postaKodu: v.postaKodu,
     }, payName(v.odemeYontemi));
     $('[data-confirm-alert]').hidden = true;
+    track('odeme_baslat', { urunler: itemsOf(ls), tutar: sub });
     if (dialog.showModal) dialog.showModal(); else if (window.confirm('Siparişi onaylıyor musunuz?')) send();
   });
 
@@ -237,9 +245,11 @@
     ok.lastChild.textContent = on ? ' Gönderiliyor…' : ' Onayla ve Siparişi Ver';
   }
 
+  var lastItems = [];
   function send() {
     if (sending) return;
     var v = values();
+    lastItems = itemsOf(lines());
     var payload = {
       sepet: lines().map(function (l) { return { kod: l.p.kod, adet: l.adet }; }),
       ad: v.ad, soyad: v.soyad, telefon: v.telefon, eposta: v.eposta, il: v.il, ilce: v.ilce, mahalle: v.mahalle,
@@ -270,6 +280,8 @@
   }
 
   function done(res) {
+    // Test siparişleri ve tekrar yanıtları reklam piksellerine gönderilmez.
+    if (!res.test && !res.tekrar) track('satin_al', { siparisNo: res.siparisNo, urunler: lastItems, tutar: res.ozet.toplam });
     cart = {}; save(); store(ORDER_KEY, null);
     renderCart();
     var o = res.ozet;
@@ -284,7 +296,9 @@
   }
 
   // Reklam linkinden gelen ürünü öne çıkar
-  if (DATA.vurgula) {
+  if (DATA.vurgula && products[DATA.vurgula]) {
+    var vp = products[DATA.vurgula];
+    track('urun_gor', { urunler: [{ kod: vp.kod, ad: vp.ad, adet: 1, fiyat: vp.fiyat }], tutar: vp.fiyat });
     var c = document.getElementById('urun-' + DATA.vurgula);
     if (c) { c.classList.add('highlight'); setTimeout(function () { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 200); }
   }

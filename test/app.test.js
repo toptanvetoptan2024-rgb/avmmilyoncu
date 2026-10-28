@@ -331,3 +331,54 @@ test('tüm sayfalar hatasız açılır', async () => {
   }
   assert.strictEqual((await req('/yok-boyle-sayfa')).status, 404);
 });
+
+// ---------------- Reklam pikselleri ve yönetici test siparişi ----------------
+
+test('piksel kimlikleri doğrulanır; hatalı kimlik yok sayılır', () => {
+  const ads = readStore({ META_PIXEL_ID: '123456789012345', TIKTOK_PIXEL_ID: 'C1ABCDEF2345GHIJ', GOOGLE_TAG_ID: 'G-ABC123XYZ' }).ads;
+  assert.deepStrictEqual(ads, { meta: '123456789012345', tiktok: 'C1ABCDEF2345GHIJ', google: 'G-ABC123XYZ' });
+  const bad = readStore({ META_PIXEL_ID: '<script>', TIKTOK_PIXEL_ID: 'x', GOOGLE_TAG_ID: 'UA-1' }).ads;
+  assert.deepStrictEqual(bad, { meta: '', tiktok: '', google: '' });
+});
+
+test('piksel yoksa çerez kutusu ve dış kaynak izni yok', async () => {
+  const r = await req('/');
+  const page = await r.text();
+  assert.ok(!page.includes('data-cerez'));
+  assert.ok(!page.includes('reklam.js'));
+  assert.ok(!r.headers.get('content-security-policy').includes('facebook'));
+});
+
+test('piksel tanımlıysa çerez onay kutusu çıkar ve yalnızca ilgili adreslere izin verilir', async () => {
+  const r = await req('/', {}, { ...env, META_PIXEL_ID: '123456789012345' });
+  const page = await r.text();
+  assert.match(page, /data-cerez hidden/);
+  assert.match(page, /Reddet/);
+  assert.match(page, /\/js\/reklam\.js/);
+  assert.match(page, /"meta":"123456789012345"/);
+  const csp = r.headers.get('content-security-policy');
+  assert.match(csp, /script-src 'self' https:\/\/connect\.facebook\.net/);
+  assert.ok(!csp.includes('tiktok') && !csp.includes('google'));
+  const kvkk = await (await req('/gizlilik-ve-kvkk', {}, { ...env, META_PIXEL_ID: '123456789012345' })).text();
+  assert.match(kvkk, /Meta \(Facebook\/Instagram\)/);
+});
+
+test('test siparişi yalnızca yönetici verebilir; raporlara girmez', async () => {
+  const off = { ...env, KAPIDA_ODEME: 'kapali' };
+  // Ziyaretçi: test seçeneği yok, kullanamaz
+  assert.ok(!(await (await req('/', {}, off)).text()).includes('value="test"'));
+  const r1 = await order({ odemeYontemi: 'test' }, off);
+  assert.strictEqual(r1.status, 400);
+  // Yönetici: kapıda ödeme kapalıyken bile test siparişi verebilir
+  const cookie = await adminCookie();
+  const page = await (await req('/', { headers: { Cookie: cookie } }, off)).text();
+  assert.match(page, /value="test"/);
+  assert.match(page, /Yönetici olarak giriş yaptınız/);
+  assert.ok(!/data-submit disabled/.test(page));
+  const r2 = await order({ odemeYontemi: 'test' }, off, { Cookie: cookie });
+  assert.strictEqual(r2.status, 201);
+  const res = await r2.json();
+  assert.strictEqual(res.test, true);
+  const o = sql.prepare('SELECT is_test, payment_method FROM orders WHERE order_no = ?').get(res.siparisNo);
+  assert.deepStrictEqual([o.is_test, o.payment_method], [1, 'kapida']);
+});

@@ -1,7 +1,7 @@
 import { html, raw } from '../html.js';
 import { formatTRY } from '../money.js';
 import { SITE_NAME } from '../config.js';
-import { STOCK_LABELS, MAX_SHOWN } from '../catalog.js';
+import { STOCK_LABELS, MAX_SHOWN, hasAds } from '../catalog.js';
 import { ILLER } from '../iller.js';
 import { MAX_QTY } from '../orders.js';
 
@@ -48,7 +48,7 @@ export function layout(ctx, { title, description }, body) {
   <meta name="description" content="${description || 'AVM Milyoncu: çok satan ürünler, avantajlı fiyatlar, hızlı kargo.'}">
   <meta name="theme-color" content="#111111">
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css?v=4">
+  <link rel="stylesheet" href="/css/style.css?v=5">
 </head>
 <body>
 <div class="topbar"><div class="wrap topbar-in">
@@ -75,6 +75,12 @@ export function layout(ctx, { title, description }, body) {
 <main>
 ${body}
 </main>
+${hasAds(ctx.store) ? html`<div class="cerez" data-cerez hidden role="dialog" aria-live="polite" aria-label="Çerez tercihi">
+  <p>Reklamlarımızın etkisini ölçmek için Meta, TikTok ve Google çerezlerini kullanmak istiyoruz. Onay vermezseniz bu çerezler
+    çalışmaz; alışverişiniz etkilenmez. <a href="/gizlilik-ve-kvkk">Ayrıntılar</a></p>
+  <div class="cerez-btns"><button type="button" class="btn btn-light" data-cerez-red>Reddet</button>
+    <button type="button" class="btn btn-orange" data-cerez-kabul>Kabul et</button></div>
+</div>` : ''}
 <footer class="footer">
   <div class="wrap footer-trust">
     ${[['truck', 'Hızlı Kargo', "Türkiye'nin her yerine"], ['shield', 'Güvenli Alışveriş', 'Şifreli bağlantı'],
@@ -88,9 +94,12 @@ ${body}
       <a href="/iade-ve-degisim">İade ve Değişim</a>
       <a href="/mesafeli-satis-sozlesmesi">Mesafeli Satış Sözleşmesi</a>
       <a href="/gizlilik-ve-kvkk">Gizlilik ve KVKK</a>
+      ${hasAds(ctx.store) ? html`<a href="#" data-cerez-ac>Çerez tercihleri</a>` : ''}
     </nav>
   </div></div>
 </footer>
+${hasAds(ctx.store) ? html`<script id="reklam-ayarlari" type="application/json">${raw(JSON.stringify(ctx.store.ads))}</script>
+<script src="/js/reklam.js?v=1" defer></script>` : ''}
 </body>
 </html>`;
 }
@@ -132,9 +141,10 @@ const field = (name, label, input, { required, hint, wide } = {}) => html`<div c
   <small class="err" id="e-${name}" aria-live="polite"></small>
 </div>`;
 
-export function homePage(ctx, { products, options, highlight }) {
+export function homePage(ctx, { products, options, highlight, admin }) {
   const shown = products.slice(0, MAX_SHOWN);
   const anyMethod = options.some((o) => o.enabled);
+  const anyPublic = options.some((o) => o.enabled && o.code !== 'test');
   const firstEnabled = options.find((o) => o.enabled);
   const c = ctx.store.contact;
   const data = {
@@ -201,7 +211,9 @@ export function homePage(ctx, { products, options, highlight }) {
           </label>`)}
           <small class="err" id="e-odeme" aria-live="polite"></small>
         </div>
-        ${anyMethod ? '' : html`<div class="notice-box">Şu anda online sipariş alınmıyor. Ödeme seçenekleri çok yakında açılacak.${c.phone ? html` Sipariş için bizi arayabilirsiniz: <a href="tel:${c.phone.replace(/[^\d+]/g, '')}">${c.phone}</a>` : ''}</div>`}
+        ${admin ? html`<div class="notice-box">Yönetici olarak giriş yaptınız. <strong>Test Siparişi</strong> seçeneğiyle deneme siparişi
+          verebilirsiniz; bu sipariş panelde "test" olarak işaretlenir, raporlara ve reklam piksellerine gitmez.</div>` : ''}
+        ${anyPublic || admin ? '' : html`<div class="notice-box">Şu anda online sipariş alınmıyor. Ödeme seçenekleri çok yakında açılacak.${c.phone ? html` Sipariş için bizi arayabilirsiniz: <a href="tel:${c.phone.replace(/[^\d+]/g, '')}">${c.phone}</a>` : ''}</div>`}
         <div class="field check" data-field="onay">
           <label><input type="checkbox" name="onay" value="1">
             <span><a href="/mesafeli-satis-sozlesmesi" target="_blank">Mesafeli satış sözleşmesini</a> ve <a href="/gizlilik-ve-kvkk" target="_blank">gizlilik politikasını</a> okudum, kabul ediyorum. <span class="req">*</span></span></label>
@@ -241,7 +253,7 @@ export function homePage(ctx, { products, options, highlight }) {
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 <noscript><div class="notice-box wrap">Sipariş verebilmek için tarayıcınızda JavaScript açık olmalıdır.</div></noscript>
 <script id="magaza-verisi" type="application/json">${raw(json)}</script>
-<script src="/js/magaza.js?v=6" defer></script>`);
+<script src="/js/magaza.js?v=7" defer></script>`);
 }
 
 export function messagePage(ctx, heading, text) {
@@ -302,6 +314,11 @@ export const PAGES = {
   <p>Bilgileriniz kargo firması dışında üçüncü kişilerle paylaşılmaz. Reklam performansını ölçmek için hangi
      reklamdan geldiğiniz bilgisi (UTM) siparişle birlikte saklanır. Sepetinizdeki ürünler yalnızca kendi
      tarayıcınızda tutulur; adres bilgileriniz tarayıcınıza kaydedilmez.</p>
+  ${hasAds(ctx.store) ? html`<h2>Çerezler ve reklam ölçümü</h2>
+  <p>Onay vermeniz halinde reklamlarımızın performansını ölçmek için şu hizmetlerin çerezleri kullanılır:
+     ${[ctx.store.ads.meta && 'Meta (Facebook/Instagram)', ctx.store.ads.tiktok && 'TikTok', ctx.store.ads.google && 'Google'].filter(Boolean).join(', ')}.
+     Bu hizmetlere ad, telefon veya adres bilginiz gönderilmez; yalnızca sayfa ziyareti, sepete ekleme ve sipariş tutarı gibi
+     bilgiler iletilir. Tercihinizi sayfanın altındaki "Çerez tercihleri" bağlantısından istediğiniz zaman değiştirebilirsiniz.</p>` : ''}
   ${ctx.store.contact.email ? html`<p>Haklarınızla ilgili taleplerinizi <a href="mailto:${ctx.store.contact.email}">${ctx.store.contact.email}</a> adresine iletebilirsiniz.</p>` : ''}
   <p class="muted">Not: Bu metin taslaktır. Yayına almadan önce firma bilgilerinizle güncelleyin.</p>`,
   },
