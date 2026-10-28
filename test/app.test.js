@@ -126,14 +126,18 @@ test('yönetim paneli şifresiz açılmaz', async () => {
   assert.strictEqual((await req('/yonetim', { headers: { Cookie: 'avm_admin=9999999999999.sahte' } })).status, 302);
 });
 
-test('şifre ayarlanmamışsa yönetim girişi kapalıdır', async () => {
-  const noPass = { ...env, ADMIN_PASSWORD: '' };
-  const r = await req('/yonetim/giris', {}, noPass);
-  assert.match(await r.text(), /ADMIN_PASSWORD/);
-  const p = await app.request('http://localhost/yonetim/giris', {
-    method: 'POST', body: 'password=', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  }, noPass);
-  assert.strictEqual(p.status, 503);
+test('geçici şifre (Avm123) ile giriş yapılır ve uyarı gösterilir', async () => {
+  const noSecret = { ...env, ADMIN_PASSWORD: '' };
+  const r = await app.request('http://localhost/yonetim/giris', {
+    method: 'POST', redirect: 'manual', body: 'password=Avm123', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  }, noSecret);
+  assert.strictEqual(r.status, 302);
+  const cookie = r.headers.get('set-cookie').split(';')[0];
+  const panel = await app.request('http://localhost/yonetim', { headers: { Cookie: cookie } }, noSecret);
+  assert.strictEqual(panel.status, 200);
+  assert.match(await panel.text(), /Geçici yönetim şifresi/);
+  // Cloudflare'de ayrı bir şifre tanımlıysa o da çalışır
+  assert.strictEqual((await post('/yonetim/giris', { password: ' test-sifre ' })).status, 302);
 });
 
 test('fiyat değişikliği geçmişe yazılır, eski sipariş etkilenmez', async () => {

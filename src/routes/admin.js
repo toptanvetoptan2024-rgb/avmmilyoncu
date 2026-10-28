@@ -25,17 +25,22 @@ const out = (c, page, status = 200) => c.html(page.toString(), status);
 // Basit deneme sınırı (her Cloudflare sunucusu için ayrı tutulur).
 const attempts = new Map();
 
-admin.get('/giris', (c) => out(c, v.loginPage(c.get('ctx'), '', !c.get('ctx').rt.adminPassword)));
+const noPassword = (rt) => !rt.adminPassword && !rt.tempPassword;
+
+admin.get('/giris', (c) => out(c, v.loginPage(c.get('ctx'), '', noPassword(c.get('ctx').rt))));
 
 admin.post('/giris', async (c) => {
   const rt = c.get('ctx').rt;
-  if (!rt.adminPassword) return out(c, v.loginPage(c.get('ctx'), '', true), 503);
+  if (noPassword(rt)) return out(c, v.loginPage(c.get('ctx'), '', true), 503);
   const ip = c.req.header('cf-connecting-ip') || 'yerel';
   const a = attempts.get(ip) || { n: 0, t: Date.now() };
   if (Date.now() - a.t > 15 * 60000) { a.n = 0; a.t = Date.now(); }
   if (a.n >= 10) return out(c, v.loginPage(c.get('ctx'), 'Çok fazla deneme. 15 dakika sonra tekrar deneyin.'), 429);
   const body = await c.req.parseBody();
-  if (await auth.safeEqual(body.password || '', rt.adminPassword)) {
+  const given = String(body.password || '').trim();
+  const okMain = rt.adminPassword && await auth.safeEqual(given, rt.adminPassword.trim());
+  const okTemp = rt.tempPassword && await auth.safeEqual(given, rt.tempPassword);
+  if (okMain || okTemp) {
     attempts.delete(ip);
     await auth.login(c, rt.sessionSecret);
     return c.redirect('/yonetim', 302);
