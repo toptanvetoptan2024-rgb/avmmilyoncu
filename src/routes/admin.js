@@ -67,16 +67,17 @@ function range(q) {
 admin.get('/', async (c) => {
   const s = c.get('s');
   const r = range(c.req.query());
-  const [report, daily, allProducts, newOrders] = await Promise.all([
+  const [report, daily, allProducts, newOrders, counts] = await Promise.all([
     productReport(s.db, r),
     dailySeries(s.db, r),
     s.products.listAll(),
     s.db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE status = 'yeni' AND is_test = 0`).first(),
+    s.orders.counts(),
   ]);
   const slots = {};
   STAGES.forEach((st) => { slots[st] = allProducts.filter((p) => p.status === 'aktif' && p.stage === st); });
   return out(c, v.dashboardPage(c.get('ctx'), {
-    range: r, report, suggestion, slots, daily: daily.slice(0, 31), newOrders: newOrders.n,
+    range: r, report, suggestion, slots, daily: daily.slice(0, 31), newOrders: newOrders.n, testOrders: counts.test,
   }));
 });
 
@@ -107,20 +108,41 @@ admin.post('/urunler/:id', async (c) => {
 });
 
 // --- Siparişler ---
+const ORDER_KINDS = ['gercek', 'test', 'arsiv'];
+// Eski adres ?test=1 artık "Test" sekmesine gider.
+const orderKind = (q) => (ORDER_KINDS.includes(q.tur) ? q.tur : q.test === '1' ? 'test' : 'gercek');
+
 admin.get('/siparisler', async (c) => {
   const s = c.get('s');
   const q = c.req.query();
   const filter = {
     status: ORDER_STATUSES.includes(q.durum) ? q.durum : '',
     productId: Number(q.urun) || 0,
-    includeTest: q.test === '1',
+    kind: orderKind(q),
+    search: String(q.ara || '').trim().slice(0, 30),
   };
-  const [orders, products] = await Promise.all([s.orders.list(filter), s.products.listAll()]);
-  return out(c, v.ordersPage(c.get('ctx'), { orders, filter, products }));
+  const [orders, products, counts] = await Promise.all([s.orders.list(filter), s.products.listAll(), s.orders.counts()]);
+  return out(c, v.ordersPage(c.get('ctx'), { orders, filter, products, counts, notice: q.bilgi || '' }));
+});
+
+// Tüm (arşivlenmemiş) test siparişlerini arşive taşır. Gerçek siparişlere dokunmaz, hiçbir kayıt silinmez.
+admin.post('/siparisler/test-arsivle', async (c) => {
+  const n = await c.get('s').orders.archiveAllTests();
+  return c.redirect(`/yonetim/siparisler?tur=arsiv&bilgi=${n}`, 303);
+});
+
+admin.post('/siparisler/:id/arsiv', async (c) => {
+  const s = c.get('s');
+  const id = Number(c.req.param('id'));
+  const order = await s.orders.getById(id);
+  if (!order) return c.notFound();
+  const b = await c.req.parseBody();
+  await s.orders.setArchived(id, b.arsiv === '1');
+  return c.redirect(`/yonetim/siparisler/${id}`, 303);
 });
 
 admin.get('/siparisler.csv', async (c) => {
-  const rows = await c.get('s').orders.list({ includeTest: c.req.query('test') === '1', limit: 100000 });
+  const rows = await c.get('s').orders.list({ kind: orderKind(c.req.query()), limit: 100000 });
   const cols = ['order_no', 'created_at', 'product_name', 'quantity', 'subtotal', 'shipping_fee', 'total', 'shipping_cost',
     'status', 'payment_method', 'payment_status', 'is_test', 'first_name', 'last_name', 'phone', 'email', 'city', 'district',
     'neighborhood', 'address', 'postal_code', 'note', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];

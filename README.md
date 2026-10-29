@@ -23,6 +23,7 @@ Tüm ürün bilgileri **`urunler.json`** dosyasındadır. GitHub'da dosyayı aç
 | `fiyat` | Satış fiyatı (TL), örnek `1799` veya `1799.90` |
 | `eskiFiyat` | Üstü çizili eski fiyat; istemiyorsanız `null` |
 | `gorsel` | Fotoğraf yolu. Fotoğrafı `public/urunler/` klasörüne yükleyin, adını buraya yazın |
+| `ozellikler` | Kartta görünen en fazla 3 kısa özellik, ör. `["Hızlı ısınma", "Suya dayanıklı"]`. Yalnızca ürünün gerçekten sahip olduğu özellikleri yazın; istemiyorsanız `[]` |
 | `stok` | `stokta`, `sinirli`, `tukendi` veya `teyit` (stok sipariş sonrası teyit edilir) |
 | `aktif` | `false` yapılırsa ürün sitede görünmez ama silinmez |
 
@@ -34,6 +35,9 @@ Sitede en fazla 3 aktif ürün görünür. Ürün maliyeti ve kargo maliyeti giz
 - `odeme.kapidaOdeme`: Kapıda ödeme. **Kargo firmanız onaylayana kadar `false`**; `false` iken site sipariş almaz. Onay gelince `true` yapın.
 - `kargo.musteriKargoUcreti`: Müşteriden alınan kargo ücreti (TL). `0` = ücretsiz kargo.
 - `iletisim`: Telefon, e-posta, WhatsApp (boşsa sitede gösterilmez).
+- `kampanya`: Sayfanın üstündeki turuncu kampanya alanı. `baslik` ve `altMetin` değiştirilebilir; `aktif: false` alanı gizler,
+  `sayac: false` sayacı gizler. Sayaç Türkiye saatiyle gün sonuna (23:59:59) kadar kalan süreyi gösterir. Rozetteki
+  "%..'a varan indirim" oranı ürünlerdeki en yüksek gerçek indirimden otomatik hesaplanır.
 
 Cloudflare'de ortam değişkeniyle de değiştirilebilir: `KAPIDA_ODEME` = `acik` / `kapali`.
 
@@ -56,6 +60,20 @@ Tür: **Gizli (Secret)**, ad: `ADMIN_PASSWORD`, değer: şifreniz → **Dağıt*
 
 Panelde: kâr/ROAS raporu, ürün yuvaları (3 kazanan + 3 potansiyel + 3 test), maliyet girişi, siparişler (durum, not,
 Excel'e aktarma), günlük reklam harcaması.
+
+Siparişler üç sekmededir: **Gerçek siparişler**, **Test siparişleri**, **Arşivlenmiş testler**. Sipariş numarası (veya bir
+parçası) ya da telefonla arama, duruma ve ürüne göre filtreleme yapılabilir.
+
+### Test siparişi nasıl verilir?
+
+1. `avmmilyoncu.com/yonetim` adresinden şifrenizle giriş yapın (telefonda denemek için telefonun tarayıcısından da girin).
+2. Siteyi açın, ürünleri sepete ekleyin, adresi doldurun.
+3. Ödeme yönteminde **Test Siparişi**'ni seçin (yalnızca giriş yapmış yöneticiye görünür) ve **Siparişi Tamamla**'ya basın.
+4. Sipariş numarası ekranda görünür; sipariş veritabanına kaydedilir ve panelde **Test siparişleri** sekmesinde
+   sarı **TEST SİPARİŞİ** etiketiyle listelenir. Raporlara, kâr hesabına ve reklam piksellerine girmez.
+
+Test siparişleri silinmez, **arşivlenir** (sipariş ayrıntısında "Arşivle" ya da Test sekmesinde "Tüm test siparişlerini
+arşivle"). Arşivleme yalnızca giriş yapmış yöneticiye açıktır ve gerçek siparişlere uygulanamaz.
 
 ## Cloudflare kurulumu
 

@@ -382,3 +382,99 @@ test('test siparişi yalnızca yönetici verebilir; raporlara girmez', async () 
   const o = sql.prepare('SELECT is_test, payment_method FROM orders WHERE order_no = ?').get(res.siparisNo);
   assert.deepStrictEqual([o.is_test, o.payment_method], [1, 'kapida']);
 });
+
+// ---------------- Kampanya, test sekmeleri, arama ve arşiv ----------------
+
+test('ana sayfa: kampanya alanı, gün sonuna kadar sayaç, ürün özellikleri ve mobil sipariş düğmesi', async () => {
+  const page = await (await req('/')).text();
+  assert.match(page, /BUGÜNE ÖZEL KAMPANYA/);
+  assert.match(page, /En Çok Satan 3 Üründe Kaçırılmayacak Fiyatlar!/);
+  assert.match(page, /%40'a<\/b>/, 'rozet ürünlerdeki en yüksek gerçek indirimi gösterir');
+  const left = Number(page.match(/data-sayac="(\d+)"/)[1]);
+  assert.ok(left > 0 && left <= 86400);
+  assert.match(page, /Hızlı ısınma/);
+  assert.match(page, /Sepetim ve Siparişi Tamamla/);
+  assert.ok(!/★|yıldız|\(\d+\) yorum/.test(page), 'sahte puan veya yorum yok');
+});
+
+test('kampanya alanı magaza.json ile kapatılabilir', async () => {
+  const { readStore } = await import('../src/catalog.js');
+  const s = readStore({}, { kampanya: { aktif: false } });
+  assert.strictEqual(s.campaign.active, false);
+  assert.strictEqual(readStore({}, {}).campaign.title, 'BUGÜNE ÖZEL KAMPANYA');
+});
+
+test('yönetim: test siparişleri ayrı sekmede, gerçeklerle karışmaz; numara ve telefonla aranır', async () => {
+  const cookie = await adminCookie();
+  const H = { headers: { Cookie: cookie } };
+  const real = await (await order({ telefon: '0533 777 66 55' })).json();
+  const t = await (await order({ odemeYontemi: 'test' }, env, { Cookie: cookie })).json();
+  assert.strictEqual(t.test, true);
+
+  const gercek = await (await req('/yonetim/siparisler', H)).text();
+  assert.ok(gercek.includes(real.siparisNo));
+  assert.ok(!gercek.includes(t.siparisNo), 'test siparişi gerçek sekmede görünmez');
+  const testTab = await (await req('/yonetim/siparisler?tur=test', H)).text();
+  assert.ok(testTab.includes(t.siparisNo));
+  assert.ok(!testTab.includes(real.siparisNo));
+  assert.match(testTab, /TEST SİPARİŞİ/);
+
+  const byNo = await (await req(`/yonetim/siparisler?ara=${real.siparisNo.slice(4).toLowerCase()}`, H)).text();
+  assert.ok(byNo.includes(real.siparisNo));
+  const byPhone = await (await req('/yonetim/siparisler?ara=0533+777+66+55', H)).text();
+  assert.ok(byPhone.includes(real.siparisNo));
+  const none = await (await req('/yonetim/siparisler?ara=ZZZZZZZZ', H)).text();
+  assert.match(none, /Aramanıza uygun sipariş bulunamadı/);
+  const csv = await (await req('/yonetim/siparisler.csv?tur=test', H)).text();
+  assert.ok(csv.includes(t.siparisNo) && !csv.includes(real.siparisNo));
+});
+
+test('yönetim: yalnızca test siparişi arşivlenir, kayıt silinmez; yetkisiz arşivleme olmaz', async () => {
+  const cookie = await adminCookie();
+  const t = await (await order({ odemeYontemi: 'test' }, env, { Cookie: cookie })).json();
+  const real = await (await order()).json();
+  const tId = sql.prepare('SELECT id FROM orders WHERE order_no = ?').get(t.siparisNo).id;
+  const rId = sql.prepare('SELECT id FROM orders WHERE order_no = ?').get(real.siparisNo).id;
+
+  // Giriş yapmadan arşivleme denemesi giriş sayfasına yönlenir, kayıt değişmez.
+  const anon = await post(`/yonetim/siparisler/${tId}/arsiv`, { arsiv: '1' });
+  assert.strictEqual(anon.status, 302);
+  assert.match(anon.headers.get('location'), /giris/);
+  assert.strictEqual(sql.prepare('SELECT archived_at FROM orders WHERE id = ?').get(tId).archived_at, null);
+  const anonAll = await post('/yonetim/siparisler/test-arsivle', {});
+  assert.strictEqual(anonAll.status, 302);
+  assert.strictEqual(sql.prepare('SELECT archived_at FROM orders WHERE id = ?').get(tId).archived_at, null);
+
+  // Gerçek sipariş arşivlenemez.
+  await post(`/yonetim/siparisler/${rId}/arsiv`, { arsiv: '1' }, { Cookie: cookie });
+  assert.strictEqual(sql.prepare('SELECT archived_at FROM orders WHERE id = ?').get(rId).archived_at, null);
+
+  // Test siparişi arşivlenir, arşiv sekmesine geçer, sonra geri alınabilir.
+  await post(`/yonetim/siparisler/${tId}/arsiv`, { arsiv: '1' }, { Cookie: cookie });
+  assert.ok(sql.prepare('SELECT archived_at FROM orders WHERE id = ?').get(tId).archived_at);
+  const H = { headers: { Cookie: cookie } };
+  assert.ok(!(await (await req('/yonetim/siparisler?tur=test', H)).text()).includes(t.siparisNo));
+  assert.ok((await (await req('/yonetim/siparisler?tur=arsiv', H)).text()).includes(t.siparisNo));
+  await post(`/yonetim/siparisler/${tId}/arsiv`, { arsiv: '0' }, { Cookie: cookie });
+  assert.strictEqual(sql.prepare('SELECT archived_at FROM orders WHERE id = ?').get(tId).archived_at, null);
+
+  // Toplu arşiv: yalnızca testler; gerçek siparişler ve kayıt sayısı aynı kalır.
+  const before = countOrders();
+  const r = await post('/yonetim/siparisler/test-arsivle', {}, { Cookie: cookie });
+  assert.strictEqual(r.status, 303);
+  assert.strictEqual(sql.prepare('SELECT COUNT(*) n FROM orders WHERE is_test = 1 AND archived_at IS NULL').get().n, 0);
+  assert.strictEqual(sql.prepare('SELECT COUNT(*) n FROM orders WHERE is_test = 0 AND archived_at IS NOT NULL').get().n, 0);
+  assert.strictEqual(countOrders(), before, 'arşivleme kayıt silmez');
+  const ev = sql.prepare('SELECT event FROM order_events WHERE order_id = ? ORDER BY id').all(tId).map((e) => e.event);
+  assert.ok(ev.some((e) => /arşivlendi/.test(e)));
+});
+
+test('arşivdeki test siparişi gerçeğe çevrilirse arşivden çıkar', async () => {
+  const cookie = await adminCookie();
+  const t = await (await order({ odemeYontemi: 'test' }, env, { Cookie: cookie })).json();
+  const id = sql.prepare('SELECT id FROM orders WHERE order_no = ?').get(t.siparisNo).id;
+  await post(`/yonetim/siparisler/${id}/arsiv`, { arsiv: '1' }, { Cookie: cookie });
+  await post(`/yonetim/siparisler/${id}`, { is_test: '0' }, { Cookie: cookie });
+  const o = sql.prepare('SELECT is_test, archived_at FROM orders WHERE id = ?').get(id);
+  assert.deepStrictEqual([o.is_test, o.archived_at], [0, null]);
+});

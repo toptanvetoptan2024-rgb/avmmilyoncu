@@ -160,10 +160,44 @@ export function orderService(db) {
   }
 
   async function setTest(id, isTest) {
+    // Gerçek siparişe çevrilen kayıt arşivde kalamaz (arşiv yalnızca test siparişleri içindir).
     await db.batch([
-      db.prepare(`UPDATE orders SET is_test = ?, updated_at = datetime('now') WHERE id = ?`).bind(isTest ? 1 : 0, id),
+      db.prepare(`UPDATE orders SET is_test = ?, archived_at = CASE WHEN ? = 1 THEN archived_at ELSE NULL END,
+        updated_at = datetime('now') WHERE id = ?`).bind(isTest ? 1 : 0, isTest ? 1 : 0, id),
       addEvent(id, isTest ? 'Test siparişi olarak işaretlendi' : 'Test işareti kaldırıldı'),
     ]);
+  }
+
+  // Yalnızca TEST siparişleri arşivlenebilir. Kayıt silinmez; gerçek siparişler "İptal" durumuna alınır.
+  async function setArchived(id, archived) {
+    const o = await getById(id);
+    if (!o || !o.is_test || Boolean(o.archived_at) === Boolean(archived)) return false;
+    await db.batch([
+      db.prepare(`UPDATE orders SET archived_at = ${archived ? "datetime('now')" : 'NULL'}, updated_at = datetime('now')
+        WHERE id = ? AND is_test = 1`).bind(id),
+      addEvent(id, archived ? 'Test siparişi arşivlendi' : 'Test siparişi arşivden çıkarıldı'),
+    ]);
+    return true;
+  }
+
+  async function archiveAllTests() {
+    const ids = (await all(db.prepare('SELECT id FROM orders WHERE is_test = 1 AND archived_at IS NULL'))).map((r) => r.id);
+    if (!ids.length) return 0;
+    await db.batch(ids.flatMap((id) => [
+      db.prepare(`UPDATE orders SET archived_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND is_test = 1`).bind(id),
+      addEvent(id, 'Test siparişi arşivlendi (toplu)'),
+    ]));
+    return ids.length;
+  }
+
+  // Sekmeler: gercek (varsayılan), test (arşivlenmemiş testler), arsiv (arşivlenmiş testler).
+  async function counts() {
+    const r = await db.prepare(`SELECT
+      SUM(CASE WHEN is_test = 0 THEN 1 ELSE 0 END) AS gercek,
+      SUM(CASE WHEN is_test = 1 AND archived_at IS NULL THEN 1 ELSE 0 END) AS test,
+      SUM(CASE WHEN is_test = 1 AND archived_at IS NOT NULL THEN 1 ELSE 0 END) AS arsiv
+      FROM orders`).first();
+    return { gercek: r?.gercek || 0, test: r?.test || 0, arsiv: r?.arsiv || 0 };
   }
 
   async function addNote(id, msg) {
@@ -173,16 +207,32 @@ export function orderService(db) {
 
   const events = (id) => all(db.prepare('SELECT * FROM order_events WHERE order_id = ? ORDER BY id').bind(id));
 
-  function list({ status, productId, includeTest, limit = 200 } = {}) {
+  // kind: 'gercek' | 'test' | 'arsiv' | 'tumu'. search: sipariş numarası (parçası) veya telefon.
+  // includeTest eski adres (?test=1) için korunur: gerçek + arşivlenmemiş test siparişleri.
+  function list({ status, productId, includeTest, kind, search, limit = 200 } = {}) {
     const where = [];
     const params = [];
     if (status) { where.push('status = ?'); params.push(status); }
     if (productId) { where.push('id IN (SELECT order_id FROM order_items WHERE product_id = ?)'); params.push(productId); }
-    if (!includeTest) where.push('is_test = 0');
+    const k = kind || (includeTest ? 'gercek+test' : 'gercek');
+    if (k === 'gercek') where.push('is_test = 0');
+    else if (k === 'test') where.push('is_test = 1 AND archived_at IS NULL');
+    else if (k === 'arsiv') where.push('is_test = 1 AND archived_at IS NOT NULL');
+    else if (k === 'gercek+test') where.push('archived_at IS NULL');
+    const q = String(search || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20);
+    const digits = String(search || '').replace(/\D/g, '');
+    if (q || digits) {
+      const parts = [];
+      if (q) { parts.push('order_no LIKE ?'); params.push(`%${q}%`); }
+      if (digits.length >= 4) { parts.push('phone LIKE ?'); params.push(`%${digits.slice(-10)}%`); }
+      where.push(`(${parts.join(' OR ')})`);
+    }
     params.push(limit);
     return all(db.prepare(`SELECT * FROM orders ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY id DESC LIMIT ?`).bind(...params));
   }
 
-  return { create, getByNo, getById, items, setStatus, setPaymentStatus, setTest, addNote, events, list };
+  return {
+    create, getByNo, getById, items, setStatus, setPaymentStatus, setTest, setArchived, archiveAllTests, counts, addNote, events, list,
+  };
 }
