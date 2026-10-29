@@ -4,6 +4,7 @@ import { SITE_NAME } from '../config.js';
 import { STOCK_LABELS, MAX_SHOWN, hasAds } from '../catalog.js';
 import { ILLER } from '../iller.js';
 import { MAX_QTY } from '../orders.js';
+import { secondsToEndOfDayTR } from '../time.js';
 
 // ctx: { rt (ortam ayarları), store (magaza.json ayarları) }
 
@@ -16,6 +17,8 @@ const ICONS = {
   return: '<path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 010 10h-3"/>',
   cart: '<path d="M3 4h2l2.4 11h10.2L20 7H6.2"/><circle cx="9" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  flame: '<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 01-10 0c0-2.2 1.2-3.6 2.4-4.6.2 1.6 1 2.6 2.1 3.1C11 9 10.8 6 12 3z"/>',
+  dot: '<circle cx="12" cy="12" r="3.5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
 };
@@ -48,7 +51,7 @@ export function layout(ctx, { title, description }, body) {
   <meta name="description" content="${description || 'AVM Milyoncu: çok satan ürünler, avantajlı fiyatlar, hızlı kargo.'}">
   <meta name="theme-color" content="#111111">
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css?v=5">
+  <link rel="stylesheet" href="/css/style.css?v=6">
 </head>
 <body>
 <div class="topbar"><div class="wrap topbar-in">
@@ -104,15 +107,45 @@ ${hasAds(ctx.store) ? html`<script id="reklam-ayarlari" type="application/json">
 </html>`;
 }
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Kampanya alanı: başlık, alt metin, en yüksek gerçek indirim oranı ve gün sonuna kadar sayaç.
+function campaign(ctx, products) {
+  const k = ctx.store.campaign;
+  if (!k.active) return '';
+  const maxOff = Math.max(0, ...products.map((p) => (p.compare_price > p.price ? Math.round((1 - p.price / p.compare_price) * 100) : 0)));
+  const left = secondsToEndOfDayTR();
+  const parts = [[Math.floor(left / 3600), 'SAAT', 's'], [Math.floor((left % 3600) / 60), 'DAKİKA', 'd'], [left % 60, 'SANİYE', 'sn']];
+  return html`<section class="promo" aria-label="Kampanya">
+  <div class="wrap promo-in">
+    ${maxOff ? html`<div class="promo-badge" aria-hidden="true"><b>%${maxOff}'a</b><span>varan</span><strong>İNDİRİMLER</strong></div>` : ''}
+    <div class="promo-text">
+      <p class="promo-title">${icon('flame', 'ico promo-flame')}${k.title}</p>
+      ${k.subtitle ? html`<p class="promo-sub">${k.subtitle}</p>` : ''}
+    </div>
+    ${k.countdown ? html`<div class="promo-timer" data-sayac="${left}" role="timer" aria-label="Kampanyanın bitmesine kalan süre">
+      <p>Kampanyanın Bitmesine Kalan Süre</p>
+      <div class="timer-boxes">
+        ${parts.map(([v, label, key]) => html`<div><span data-sayac-${key}>${pad2(v)}</span><small>${label}</small></div>`)}
+      </div>
+    </div>` : ''}
+  </div>
+</section>`;
+}
+
 const step = (n, title, sub) => html`<div class="step-head"><span class="step-no">${n}</span><div><h2>${title}</h2>${sub ? html`<p>${sub}</p>` : ''}</div></div>`;
 
 function productCard(p) {
   const discount = p.compare_price > p.price ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
   const soldOut = p.stock === 'tukendi';
+  const features = String(p.features_list || '').split('\n').filter(Boolean);
   return html`<article class="card" id="urun-${p.slug}" data-product="${p.slug}">
-  <div class="card-img">
-    ${discount ? html`<span class="badge"><b>%${discount}</b>indirim</span>` : ''}
-    <img src="${p.image || '/img/placeholder.svg'}" alt="${p.name}" width="600" height="330" loading="lazy">
+  <div class="card-top${features.length ? '' : ' no-feat'}">
+    <div class="card-img">
+      ${discount ? html`<span class="badge"><b>%${discount}</b>indirim</span>` : ''}
+      <img src="${p.image || '/img/placeholder.svg'}" alt="${p.name}" width="600" height="400" loading="lazy">
+    </div>
+    ${features.length ? html`<ul class="feats">${features.map((f) => html`<li>${icon('check', 'ico feat-ico')}<span>${f}</span></li>`)}</ul>` : ''}
   </div>
   <div class="card-body">
     <h3>${p.name}</h3>
@@ -159,6 +192,7 @@ export function homePage(ctx, { products, options, highlight, admin }) {
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
 
   return layout(ctx, {}, html`
+${campaign(ctx, shown)}
 <div class="wrap shop">
   <section class="sec sec-products" id="urunler">
     ${step(1, 'Ürünlerinizi Seçin', 'En çok satan ürünlerde kaçırılmayacak fiyatlar!')}
@@ -229,6 +263,7 @@ export function homePage(ctx, { products, options, highlight, admin }) {
   <section class="sec sec-done" id="tamamlandi" hidden>
     <div class="panel done">
       <div class="done-icon">${icon('check')}</div>
+      <p class="test-flag" data-done-test hidden>TEST SİPARİŞİ: raporlara ve reklamlara yansımaz, yönetim panelinde "Test" sekmesinde görünür.</p>
       <h2>Siparişiniz alındı</h2>
       <p>Sipariş numaranız: <strong data-done-no></strong></p>
       <p class="muted">Siparişinizi teyit etmek için sizi telefonla arayacağız. Bu numarayı not almanızı öneririz.</p>
@@ -250,10 +285,15 @@ export function homePage(ctx, { products, options, highlight, admin }) {
   </form>
 </dialog>
 
+<div class="mobile-bar" data-mobile-bar>
+  <a href="#sepet" class="btn btn-orange btn-block" data-go-checkout>${icon('cart')}
+    <span>Sepetim ve Siparişi Tamamla</span><span class="mb-count" data-mb-summary hidden></span></a>
+</div>
+
 <div class="toast" data-toast role="status" aria-live="polite"></div>
 <noscript><div class="notice-box wrap">Sipariş verebilmek için tarayıcınızda JavaScript açık olmalıdır.</div></noscript>
 <script id="magaza-verisi" type="application/json">${raw(json)}</script>
-<script src="/js/magaza.js?v=7" defer></script>`);
+<script src="/js/magaza.js?v=8" defer></script>`);
 }
 
 export function messagePage(ctx, heading, text) {

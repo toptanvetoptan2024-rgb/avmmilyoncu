@@ -69,6 +69,8 @@
     $('[data-total]').textContent = money(sub + (ls.length ? DATA.kargoUcreti : 0));
     var n = count();
     $$('[data-cart-count]').forEach(function (el) { el.textContent = n; el.hidden = n === 0; });
+    var mb = $('[data-mb-summary]');
+    if (mb) { mb.textContent = n ? n + ' ürün · ' + money(sub + DATA.kargoUcreti) : ''; mb.hidden = n === 0; }
     var sec = $('.sec-cart .step-head p');
     if (!sec) {
       var h = $('.sec-cart .step-head div');
@@ -286,6 +288,9 @@
     renderCart();
     var o = res.ozet;
     $('[data-done-no]').textContent = res.siparisNo;
+    $('[data-done-test]').hidden = !res.test;
+    var bar = $('[data-mobile-bar]'); if (bar) bar.hidden = true;
+    var promo = $('.promo'); if (promo) promo.hidden = true;
     $('[data-done-summary]').innerHTML = summaryHtml(o.urunler, o.araToplam, o.kargo, o.toplam, o.teslimat, payName(o.odeme));
     form.reset();
     form.hidden = true;
@@ -293,6 +298,31 @@
     $('.sec-products').hidden = true;
     $('#tamamlandi').hidden = false;
     window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  // ---------- Mobil alt düğme: sepet doluysa sepete, boşsa ürünlere götürür ----------
+  var go = $('[data-go-checkout]');
+  if (go) go.addEventListener('click', function (e) {
+    e.preventDefault();
+    var target = count() ? $('#sepet') : $('#urunler');
+    if (!count()) toast('Sepetiniz boş. Önce bir ürün seçip Sepete Ekle\'ye basın.');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // ---------- Kampanya sayacı: Türkiye saatiyle gün sonuna kadar ----------
+  var timer = $('[data-sayac]');
+  if (timer) {
+    var endAt = Date.now() + parseInt(timer.getAttribute('data-sayac'), 10) * 1000;
+    var two = function (x) { return (x < 10 ? '0' : '') + x; };
+    var tick = function () {
+      var left = Math.round((endAt - Date.now()) / 1000);
+      left = ((left % 86400) + 86400) % 86400 || 86400; // gece yarısı geçince yeni gün için baştan başlar
+      $('[data-sayac-s]', timer).textContent = two(Math.floor(left / 3600));
+      $('[data-sayac-d]', timer).textContent = two(Math.floor((left % 3600) / 60));
+      $('[data-sayac-sn]', timer).textContent = two(left % 60);
+    };
+    tick();
+    setInterval(tick, 1000);
   }
 
   // Reklam linkinden gelen ürünü öne çıkar

@@ -21,7 +21,7 @@ export function adminLayout(ctx, { title, path, hideNav }, body) {
   <meta name="robots" content="noindex">
   <title>${title} · Yönetim</title>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css?v=5">
+  <link rel="stylesheet" href="/css/style.css?v=6">
 </head>
 <body class="admin">
 <header class="site-header">
@@ -66,13 +66,24 @@ const num = (x, d) => (x === null ? '–' : x.toFixed(d).replace('.', ','));
 const money = (x) => (x === null ? '–' : formatTRY(x));
 const cls = (x) => (x > 0 ? 'pos' : x < 0 ? 'neg' : '');
 
-export function dashboardPage(ctx, { range, report, suggestion, slots, daily, newOrders }) {
+export function dashboardPage(ctx, { range, report, suggestion, slots, daily, newOrders, testOrders = 0 }) {
   const presets = [['bugun', 'Bugün'], ['7', '7 gün'], ['30', '30 gün'], ['90', '90 gün'], ['tumu', 'Tümü']];
   const t = report.total;
   return adminLayout(ctx, { title: 'Panel', path: '/' }, html`
 <div class="page-head">
   <h1>Panel</h1>
   ${newOrders ? html`<a class="btn btn-sm" href="/yonetim/siparisler?durum=yeni">${newOrders} yeni sipariş</a>` : ''}
+</div>
+<div class="test-help">
+  <div>
+    <strong>Test siparişi nasıl verilir?</strong>
+    <p>Bu tarayıcıda yönetici olarak giriş yaptınız. Siteyi açıp ürünü sepete ekleyin, adresi doldurun ve ödeme yönteminde
+      <strong>Test Siparişi</strong>'ni seçin. Telefonda denemek için telefonun tarayıcısından da bir kez giriş yapın.</p>
+  </div>
+  <div class="test-help-btns">
+    <a class="btn btn-sm" href="/#urunler" target="_blank">Siteyi aç ve test siparişi ver ↗</a>
+    <a class="btn btn-sm btn-dark" href="/yonetim/siparisler?tur=test">Test siparişleri (${testOrders})</a>
+  </div>
 </div>
 <form class="filters" method="get">
   ${presets.map(([k, l]) => html`<a class="chip ${range.preset === k ? 'on' : ''}" href="?aralik=${k}">${l}</a>`)}
@@ -205,28 +216,42 @@ ${history.length ? html`<h2>Değişiklik geçmişi</h2>
 </table></div>` : ''}`);
 }
 
-export function ordersPage(ctx, { orders, filter, products }) {
+const TEST_TAG = html`<span class="tag tag-testsip">TEST SİPARİŞİ</span>`;
+
+export function ordersPage(ctx, { orders, filter, products, counts = { gercek: 0, test: 0, arsiv: 0 }, notice = '' }) {
+  const kind = filter.kind || 'gercek';
+  const tabs = [['gercek', 'Gerçek siparişler'], ['test', 'Test siparişleri'], ['arsiv', 'Arşivlenmiş testler']];
   return adminLayout(ctx, { title: 'Siparişler', path: '/siparisler' }, html`
 <div class="page-head">
   <h1>Siparişler</h1>
-  <a class="btn btn-sm btn-dark" href="/yonetim/siparisler.csv${filter.includeTest ? '?test=1' : ''}">Excel'e aktar (CSV)</a>
+  <a class="btn btn-sm btn-dark" href="/yonetim/siparisler.csv?tur=${kind}">Excel'e aktar (CSV)</a>
 </div>
+<nav class="tabs" aria-label="Sipariş türü">
+  ${tabs.map(([k, l]) => html`<a class="tab ${kind === k ? 'on' : ''} tab-${k}" href="/yonetim/siparisler?tur=${k}" ${kind === k ? 'aria-current="page"' : ''}>${l} <span>${counts[k]}</span></a>`)}
+</nav>
+${notice !== '' && kind === 'arsiv' ? html`<div class="ok">${notice} test siparişi arşive taşındı. Kayıtlar silinmedi; gerektiğinde tek tek arşivden çıkarılabilir.</div>` : ''}
+${kind === 'test' ? html`<div class="test-note">
+  <span>Bu sekmede yalnızca <strong>test siparişleri</strong> var. Raporlara, kâr hesabına ve reklam piksellerine dahil edilmezler.</span>
+  ${counts.test ? html`<form method="post" action="/yonetim/siparisler/test-arsivle"><button class="btn btn-sm btn-dark">Tüm test siparişlerini arşivle</button></form>` : ''}
+</div>` : ''}
 <form class="filters" method="get">
-  <select name="durum"><option value="">Tüm durumlar</option>
+  <input type="hidden" name="tur" value="${kind}">
+  <input type="search" name="ara" value="${filter.search || ''}" placeholder="Sipariş no veya telefon" aria-label="Sipariş numarası veya telefonla ara">
+  <select name="durum" aria-label="Durum"><option value="">Tüm durumlar</option>
     ${ORDER_STATUSES.map((s) => html`<option value="${s}" ${sel(filter.status, s)}>${ORDER_STATUS_LABELS[s]}</option>`)}
   </select>
-  <select name="urun"><option value="">Tüm ürünler</option>
+  <select name="urun" aria-label="Ürün"><option value="">Tüm ürünler</option>
     ${products.map((p) => html`<option value="${p.id}" ${sel(filter.productId, p.id)}>${p.name}</option>`)}
   </select>
-  <label class="check"><input type="checkbox" name="test" value="1" ${filter.includeTest ? 'checked' : ''}> Test siparişlerini göster</label>
-  <button class="btn btn-sm btn-dark">Filtrele</button>
+  <button class="btn btn-sm btn-dark">Ara / Filtrele</button>
+  ${filter.search || filter.status || filter.productId ? html`<a class="small" href="/yonetim/siparisler?tur=${kind}">Temizle</a>` : ''}
 </form>
 <div class="table-wrap"><table class="table">
   <thead><tr><th>No</th><th>Tarih</th><th>Müşteri</th><th>Ürün</th><th>Tutar</th><th>Ödeme</th><th>Durum</th><th>Kaynak</th></tr></thead>
   <tbody>
-  ${orders.length ? '' : html`<tr><td colspan="8" class="muted">Sipariş yok.</td></tr>`}
-  ${orders.map((o) => html`<tr class="${o.is_test ? 'dim' : ''}">
-    <td><a href="/yonetim/siparisler/${o.id}">${o.order_no}</a>${o.is_test ? ' (test)' : ''}</td>
+  ${orders.length ? '' : html`<tr><td colspan="8" class="muted">${filter.search ? 'Aramanıza uygun sipariş bulunamadı.' : 'Sipariş yok.'}</td></tr>`}
+  ${orders.map((o) => html`<tr class="${o.is_test ? 'row-test' : ''}">
+    <td><a href="/yonetim/siparisler/${o.id}"><strong>${o.order_no}</strong></a>${o.is_test ? html`<br>${TEST_TAG}` : ''}</td>
     <td>${formatDateTime(o.created_at)}</td>
     <td>${o.customer_name}<br><span class="muted small">${o.phone} · ${o.city}</span></td>
     <td class="small">${o.product_name}</td>
@@ -246,8 +271,16 @@ export function orderPage(ctx, { order: o, items, events }) {
 <div class="page-head">
   <h1>Sipariş ${o.order_no}</h1>
   <span class="tag tag-${o.status}">${ORDER_STATUS_LABELS[o.status]}</span>
+  ${o.is_test ? TEST_TAG : ''}
 </div>
-${o.is_test ? html`<div class="alert">Bu bir TEST siparişi. Raporlara dahil edilmez.</div>` : ''}
+${o.is_test ? html`<div class="test-note">
+  <span><strong>Bu bir TEST siparişi.</strong> Raporlara ve reklam piksellerine dahil edilmez.
+    ${o.archived_at ? html`Arşivde (${formatDateTime(o.archived_at)}).` : ''}</span>
+  <form method="post" action="/yonetim/siparisler/${o.id}/arsiv">
+    <input type="hidden" name="arsiv" value="${o.archived_at ? '0' : '1'}">
+    <button class="btn btn-sm btn-dark">${o.archived_at ? 'Arşivden çıkar' : 'Arşivle'}</button>
+  </form>
+</div>` : ''}
 <div class="cols">
   <div>
     <div class="table-wrap"><table class="table">
@@ -283,12 +316,12 @@ ${o.is_test ? html`<div class="alert">Bu bir TEST siparişi. Raporlara dahil edi
     </label>
     <label>Not ekle <input name="note" placeholder="Örn: Müşteri arandı, teyit edildi"></label>
     <button class="btn btn-block">Kaydet</button>
-    <p class="muted small">Siparişler silinmez. Gerekirse "İptal" durumuna alın.</p>
+    <p class="muted small">Siparişler silinmez. Gerçek siparişi gerekirse "İptal" durumuna alın; test siparişleri arşivlenebilir.</p>
   </form>
 </div>
 <h2>Geçmiş</h2>
 <ul class="timeline">${events.map((e) => html`<li><span class="muted small">${formatDateTime(e.created_at)}</span> ${e.event}</li>`)}</ul>
-<p><a href="/yonetim/siparisler">← Siparişlere dön</a></p>`);
+<p><a href="/yonetim/siparisler?tur=${o.is_test ? (o.archived_at ? 'arsiv' : 'test') : 'gercek'}">← Siparişlere dön</a></p>`);
 }
 
 export function adsPage(ctx, { list, products, errors, form }) {

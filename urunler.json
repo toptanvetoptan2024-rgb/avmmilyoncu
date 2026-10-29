@@ -1,10 +1,15 @@
 {
-  "_aciklama": "Sitedeki ürünler bu dosyadan gelir. Fiyatlar TL olarak yazılır (örnek: 1799 veya 1799.90). 'eskiFiyat' üstü çizili fiyattır, istemiyorsanız null yazın. 'gorsel' için fotoğrafı public/urunler klasörüne yükleyip adını yazın. 'stok' değerleri: stokta, sinirli, tukendi, teyit (teyit = stok bilgisi sipariş sonrası telefonla teyit edilir). 'aktif': false yapılan ürün sitede görünmez ama silinmez. Sitede en fazla 3 aktif ürün gösterilir. 'kod' değerini değiştirmeyin; ürünün geçmişi ve siparişleri bu koda bağlıdır.",
+  "_aciklama": "Sitedeki ürünler bu dosyadan gelir. Fiyatlar TL olarak yazılır (örnek: 1799 veya 1799.90). 'eskiFiyat' üstü çizili fiyattır, istemiyorsanız null yazın. 'gorsel' için fotoğrafı public/urunler klasörüne yükleyip adını yazın. 'stok' değerleri: stokta, sinirli, tukendi, teyit (teyit = stok bilgisi sipariş sonrası telefonla teyit edilir). 'aktif': false yapılan ürün sitede görünmez ama silinmez. Sitede en fazla 3 aktif ürün gösterilir. 'kod' değerini değiştirmeyin; ürünün geçmişi ve siparişleri bu koda bağlıdır. 'ozellikler' kartta görünen en fazla 3 kısa özelliktir (her biri en fazla 40 karakter); ürünün gerçekten sahip olduğu özellikleri yazın, emin değilseniz boş liste [] bırakın.",
   "urunler": [
     {
       "kod": "semsiye-tipi-isitici",
       "ad": "Şemsiye Tipi Isıtıcı",
       "kisaAciklama": "Kışın sıcak, konforlu anlar",
+      "ozellikler": [
+        "Hızlı ısınma",
+        "Suya dayanıklı",
+        "Ayarlanabilir yükseklik"
+      ],
       "fiyat": 1799,
       "eskiFiyat": 2999,
       "gorsel": "/urunler/semsiye-tipi-isitici.jpg",
@@ -15,6 +20,11 @@
       "kod": "masaj-tabancasi",
       "ad": "Masaj Tabancası",
       "kisaAciklama": "Günlük yorgunluğunuza son",
+      "ozellikler": [
+        "Derin kas masajı",
+        "4 farklı başlık",
+        "Uzun pil ömrü"
+      ],
       "fiyat": 899,
       "eskiFiyat": 1499,
       "gorsel": "/urunler/masaj-tabancasi.jpg",
@@ -25,6 +35,11 @@
       "kod": "kablosuz-kulaklik",
       "ad": "Kablosuz Kulaklık",
       "kisaAciklama": "Yüksek ses kalitesi",
+      "ozellikler": [
+        "Yüksek ses kalitesi",
+        "Uzun pil ömrü",
+        "Kablosuz özgürlük"
+      ],
       "fiyat": 699,
       "eskiFiyat": 999,
       "gorsel": "/urunler/kablosuz-kulaklik.jpg",

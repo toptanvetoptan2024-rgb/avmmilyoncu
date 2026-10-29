@@ -30,6 +30,9 @@ export function readCatalog(source = urunlerDosyasi) {
     if (!(price > 0)) return problems.push(`${where}: "fiyat" 0'dan büyük bir sayı olmalı.`);
     if (compare !== null && !(compare > 0)) return problems.push(`${where}: "eskiFiyat" sayı ya da null olmalı.`);
     const stock = STOCK_LABELS[u.stok] ? u.stok : 'teyit';
+    // Kartta görünen en fazla 3 kısa özellik (ör. "Hızlı ısınma"). İsteğe bağlı.
+    const features = (Array.isArray(u.ozellikler) ? u.ozellikler : [])
+      .map((f) => String(f || '').replace(/\s+/g, ' ').trim().slice(0, 40)).filter(Boolean).slice(0, 3);
     seen.add(kod);
     products.push({
       slug: kod,
@@ -38,6 +41,7 @@ export function readCatalog(source = urunlerDosyasi) {
       price,
       compare_price: compare !== null && compare > price ? compare : null,
       image: String(u.gorsel || '').trim(),
+      features_list: features.join('\n'),
       stock,
       status: u.aktif === false ? 'pasif' : 'aktif',
       sort_order: i + 1,
@@ -61,6 +65,12 @@ export function readStore(env = {}, source = magazaDosyasi) {
     cashOnDeliveryText: s.odeme?.kapidaOdemeAciklama || 'Kapıda ödeme',
     shippingFee: fee,
     deliveryText: s.kargo?.teslimSuresi || '',
+    campaign: {
+      active: s.kampanya?.aktif !== false,
+      title: String(s.kampanya?.baslik || 'BUGÜNE ÖZEL KAMPANYA').slice(0, 60),
+      subtitle: String(s.kampanya?.altMetin ?? 'En Çok Satan 3 Üründe Kaçırılmayacak Fiyatlar!').slice(0, 120),
+      countdown: s.kampanya?.sayac !== false,
+    },
     ads: readAds(env, s.reklam || {}),
   };
 }
@@ -80,7 +90,8 @@ function readAds(env, r) {
 
 export const hasAds = (store) => Boolean(store.ads.meta || store.ads.tiktok || store.ads.google);
 
-const TRACKED = ['name', 'headline', 'price', 'compare_price', 'image', 'stock', 'status'];
+const TRACKED = ['name', 'headline', 'features_list', 'price', 'compare_price', 'image', 'stock', 'status'];
+const NO_HISTORY = ['headline', 'features_list']; // metin değişiklikleri geçmişe yazılmaz
 let syncedFor = null;
 
 // Katalog dosyasını veritabanına işler. Ürün silinmez: dosyadan çıkarılan ürün "pasif" olur.
@@ -97,17 +108,18 @@ export async function syncCatalog(db, catalog = readCatalog()) {
   for (const p of catalog.products) {
     const cur = bySlug.get(p.slug);
     if (!cur) {
-      stmts.push(db.prepare(`INSERT INTO products (slug, name, headline, price, compare_price, image, stock, status, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(p.slug, p.name, p.headline, p.price, p.compare_price, p.image, p.stock, p.status, p.sort_order));
+      stmts.push(db.prepare(`INSERT INTO products (slug, name, headline, features_list, price, compare_price, image, stock, status, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(p.slug, p.name, p.headline, p.features_list || '', p.price, p.compare_price, p.image,
+        p.stock, p.status, p.sort_order));
       stmts.push(hist(p.slug, 'olusturuldu', null, JSON.stringify({ price: p.price, kaynak: 'urunler.json' })));
       continue;
     }
     const changed = TRACKED.filter((k) => String(cur[k] ?? '') !== String(p[k] ?? ''));
-    changed.forEach((k) => { if (k !== 'headline') stmts.push(hist(p.slug, k, cur[k], p[k])); });
+    changed.forEach((k) => { if (!NO_HISTORY.includes(k)) stmts.push(hist(p.slug, k, cur[k], p[k])); });
     if (changed.length || cur.sort_order !== p.sort_order) {
-      stmts.push(db.prepare(`UPDATE products SET name = ?, headline = ?, price = ?, compare_price = ?, image = ?, stock = ?,
-        status = ?, sort_order = ?, updated_at = datetime('now') WHERE slug = ?`)
-        .bind(p.name, p.headline, p.price, p.compare_price, p.image, p.stock, p.status, p.sort_order, p.slug));
+      stmts.push(db.prepare(`UPDATE products SET name = ?, headline = ?, features_list = ?, price = ?, compare_price = ?, image = ?,
+        stock = ?, status = ?, sort_order = ?, updated_at = datetime('now') WHERE slug = ?`)
+        .bind(p.name, p.headline, p.features_list || '', p.price, p.compare_price, p.image, p.stock, p.status, p.sort_order, p.slug));
     }
   }
   const inFile = new Set(catalog.products.map((p) => p.slug));

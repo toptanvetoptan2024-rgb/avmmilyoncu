@@ -130,6 +130,12 @@ const MIGRATIONS = [
     `CREATE TRIGGER IF NOT EXISTS no_delete_order_items BEFORE DELETE ON order_items
       BEGIN SELECT RAISE(ABORT, 'Sipariş kalemleri silinemez.'); END`,
   ],
+  // 3: Test siparişlerini arşivleme (silinmez, yalnızca listeden kalkar) ve sipariş numarasıyla hızlı arama.
+  [
+    `ALTER TABLE orders ADD COLUMN archived_at TEXT`,
+    `CREATE INDEX IF NOT EXISTS idx_orders_test_archived ON orders(is_test, archived_at)`,
+    `ALTER TABLE products ADD COLUMN features_list TEXT NOT NULL DEFAULT ''`,
+  ],
 ];
 
 // Testler için dışa açık.
