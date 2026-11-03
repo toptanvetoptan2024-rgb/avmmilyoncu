@@ -1,2 +1,4 @@
 # Bilgisayarda "npm run dev" ile denemek icin bu dosyayi .dev.vars adiyla kopyalayin.
+# Bu dosyaya gercek sifre yazmayin; .dev.vars GitHub a gonderilmez.
 ADMIN_PASSWORD=demo
+KAPIDA_ODEME=acik

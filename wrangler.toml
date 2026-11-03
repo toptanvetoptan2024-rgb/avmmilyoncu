@@ -5,7 +5,7 @@ compatibility_date = "2025-09-01"
 # Cloudflare panelinden eklenen değişkenler her yüklemede silinmesin.
 keep_vars = true
 
-# Statik dosyalar (CSS, logo, örnek ürün görselleri)
+# Statik dosyalar: CSS, tarayıcı kodu (js), ürün fotoğrafları (urunler). Cloudflare bu klasörü doğrudan yayınlar.
 [assets]
 directory = "./public"
 
@@ -14,13 +14,8 @@ directory = "./public"
 binding = "DB"
 database_name = "avmmilyoncu-db"
 
-# Panelden yüklenen ürün fotoğrafları. İlk yüklemede Cloudflare otomatik oluşturur.
-[[kv_namespaces]]
-binding = "IMAGES"
-
+# Gizli değerler (ADMIN_PASSWORD gibi) burada DEĞİL, Cloudflare panelinde "Gizli" olarak tutulur.
 [vars]
-# test: kartla ödeme simülasyon (gerçek para çekilmez). Gerçek ödeme sağlayıcısı bağlanana kadar test kalmalı.
-PAYMENT_MODE = "test"
 SITE_URL = "https://avmmilyoncu.com"
 
 [observability]

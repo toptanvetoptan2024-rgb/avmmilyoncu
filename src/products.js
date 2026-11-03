@@ -2,10 +2,10 @@ import { STAGES, STAGE_LABELS, MAX_PER_STAGE, MAX_ACTIVE } from './config.js';
 import { all } from './db.js';
 
 // Geçmişte izlenen alanlar: değiştiğinde product_history'ye yazılır.
-export const TRACKED = ['price', 'compare_price', 'unit_cost', 'shipping_cost', 'stage', 'status', 'name', 'image'];
+export const TRACKED = ['price', 'compare_price', 'unit_cost', 'shipping_cost', 'stage', 'status', 'name', 'image', 'stock'];
 
-const EDITABLE = ['slug', 'name', 'headline', 'description', 'features', 'faq', 'price',
-  'compare_price', 'unit_cost', 'shipping_cost', 'image', 'stage', 'status', 'sort_order'];
+// Yönetim panelinden değiştirilebilen alanlar. Ad, fiyat, görsel ve stok urunler.json dosyasından gelir.
+const EDITABLE = ['unit_cost', 'shipping_cost', 'stage'];
 
 const ORDER_BY = `CASE stage WHEN 'kazanan' THEN 0 WHEN 'potansiyel' THEN 1 ELSE 2 END, sort_order, id`;
 
@@ -72,26 +72,6 @@ export function productService(db) {
     return errors;
   }
 
-  async function create(data) {
-    const errors = await validate(data, null);
-    if (errors.length) return { errors };
-    const row = {
-      slug: data.slug, name: data.name, headline: data.headline || '', description: data.description || '',
-      features: data.features || '', faq: data.faq || '', price: data.price, compare_price: data.compare_price ?? null,
-      unit_cost: data.unit_cost ?? 0, shipping_cost: data.shipping_cost ?? 0, image: data.image || '',
-      stage: data.stage, status: data.status, sort_order: data.sort_order || 0,
-    };
-    await db.batch([
-      db.prepare(`INSERT INTO products (${EDITABLE.join(', ')}) VALUES (${EDITABLE.map(() => '?').join(', ')})`)
-        .bind(...EDITABLE.map((k) => row[k])),
-      db.prepare(`INSERT INTO product_history (product_id, field, old_value, new_value)
-        SELECT id, 'olusturuldu', NULL, ? FROM products WHERE slug = ?`)
-        .bind(JSON.stringify({ price: row.price, stage: row.stage }), row.slug),
-    ]);
-    const created = await getBySlug(row.slug);
-    return { id: created.id };
-  }
-
   async function update(id, data) {
     const current = await getById(id);
     if (!current) return { errors: ['Ürün bulunamadı.'] };
@@ -115,5 +95,5 @@ export function productService(db) {
 
   const history = (id) => all(db.prepare('SELECT * FROM product_history WHERE product_id = ? ORDER BY id DESC').bind(id));
 
-  return { getById, getBySlug, listActive, listAll, create, update, history, slotError };
+  return { getById, getBySlug, listActive, listAll, update, history, slotError };
 }

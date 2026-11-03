@@ -32,11 +32,3 @@ export function createD1() {
   };
 }
 
-export function createKV() {
-  const store = new Map();
-  return {
-    store,
-    put: async (k, v, opts = {}) => { store.set(k, { value: v, metadata: opts.metadata || null }); },
-    getWithMetadata: async (k) => store.get(k) || { value: null, metadata: null },
-  };
-}
