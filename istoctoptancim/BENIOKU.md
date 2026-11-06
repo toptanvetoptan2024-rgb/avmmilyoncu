@@ -5,7 +5,8 @@ için yazılan / saklanan kodları tutar. Cloudflare'e yüklenmez.
 
 | Dosya | Ne işe yarar |
 |---|---|
-| `vitrin-ozel.css` | Vitrin adet kutusu, mavi "KDV Dahil" etiketi, sepetteki indirimli fiyat görünümü. Qukasoft panelinde **CSS** kutusuna yapıştırılır. |
+| `kdv-dahil.css` / `kdv-dahil.js` | **KULLANILAN KOD.** Vitrin kartlarına ve ürün detay sayfasına mavi "KDV Dahil" etiketi ekler. Panelde CSS ve JS kutularına yapıştırılır. |
+| `vitrin-ozel.css` | (Artık kullanılmıyor – adet ve indirimli fiyat panelden açıldı.) Vitrin adet kutusu, mavi "KDV Dahil" etiketi, sepetteki indirimli fiyat görünümü. Qukasoft panelinde **CSS** kutusuna yapıştırılır. |
 | `vitrin-ozel.js` | Aynı özelliklerin çalışan kodu. Qukasoft panelinde **JS** kutusuna yapıştırılır. |
 | `tema-scripts.js` | Temanın kendi JS kodu (`theme/___discovery/assets/scripts.js`). Sadece başvuru için. |
 | `tema-style.css` | Temanın kendi CSS kodu (`theme/___discovery/assets/style.css`). Sadece başvuru için. |
