@@ -1,0 +1,15 @@
+.vq-adet{display:flex;flex-direction:column;align-items:center;margin:8px 0 10px;}
+.vq-kutu{display:flex;align-items:center;border:1px solid #dcdcdc;border-radius:6px;overflow:hidden;background:#fff;}
+.vq-kutu button{width:34px;height:34px;border:0;background:#f5f5f5;color:#333;font-size:18px;line-height:1;cursor:pointer;padding:0;}
+.vq-kutu button:hover{background:#e6e6e6;}
+.vq-kutu input{width:52px;height:34px;border:0;border-left:1px solid #dcdcdc;border-right:1px solid #dcdcdc;text-align:center;font-size:15px;color:#222;outline:none;margin:0;padding:0;-moz-appearance:textfield;}
+.vq-kutu input::-webkit-outer-spin-button,.vq-kutu input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.vq-etiket{font-size:13px;color:#666;margin-top:4px;}
+.vq-kdv-satir{text-align:center;margin-top:4px;}
+.vq-kdv{display:inline-block;background:#1c7ad2;color:#fff;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:4px;}
+
+/* Sepetteki indirimli fiyat (isteğe bağlı) */
+.vq-eski{text-decoration:line-through;color:#888 !important;font-weight:400 !important;font-size:15px !important;}
+.vq-sepet{margin-top:6px;border:1px solid #e3e3e3;border-radius:4px;padding:6px 4px;text-align:center;}
+.vq-sepet-yazi{font-size:13px;color:#555;}
+.vq-sepet-fiyat{font-size:17px;font-weight:700;color:#222;}
