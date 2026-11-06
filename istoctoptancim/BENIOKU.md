@@ -6,8 +6,6 @@ için yazılan / saklanan kodları tutar. Cloudflare'e yüklenmez.
 | Dosya | Ne işe yarar |
 |---|---|
 | `kdv-dahil.css` / `kdv-dahil.js` | **KULLANILAN KOD.** Vitrin kartlarına ve ürün detay sayfasına mavi "KDV Dahil" etiketi ekler. Panelde CSS ve JS kutularına yapıştırılır. |
-| `vitrin-ozel.css` | (Artık kullanılmıyor – adet ve indirimli fiyat panelden açıldı.) Vitrin adet kutusu, mavi "KDV Dahil" etiketi, sepetteki indirimli fiyat görünümü. Qukasoft panelinde **CSS** kutusuna yapıştırılır. |
-| `vitrin-ozel.js` | Aynı özelliklerin çalışan kodu. Qukasoft panelinde **JS** kutusuna yapıştırılır. |
 | `tema-scripts.js` | Temanın kendi JS kodu (`theme/___discovery/assets/scripts.js`). Sadece başvuru için. |
 | `tema-style.css` | Temanın kendi CSS kodu (`theme/___discovery/assets/style.css`). Sadece başvuru için. |
 
@@ -23,7 +21,3 @@ Tema CSS'inde şu parçalar zaten tanımlı; panelde ilgili ayar açılırsa kod
 - `.price-group .prices .list-price` → üstü çizili liste (eski) fiyat
 - `.card-product .sale-price-basket` → kartta "sepetteki fiyat" kutusu
 - `.product-transfer-discount` → havale indirimi kutusu
-
-## Dikkat
-- `vitrin-ozel.js` içindeki "sepetteki indirim" bölümü (ORAN = 15) sadece görüntüdür.
-  Qukasoft panelinde aynı oranda sepet kampanyası tanımlı değilse bu bölüm kullanılmamalı.
