@@ -1,8 +1,10 @@
-/* Mobilde altta sabit yeşil WhatsApp destek çubuğu (masaüstünde gizli) */
+/* Mobilde altta sabit yeşil WhatsApp destek çubuğu (masaüstünde gizli).
+   Sitenin alt mobil menüsü varsa onun hemen ÜSTÜNE oturur (--vq-alt = menü yüksekliği). */
 .vq-wp-cubuk{display:none;}
 @media (max-width: 991px){
-  .vq-wp-cubuk{display:flex;align-items:center;justify-content:center;gap:10px;position:fixed;left:0;right:0;bottom:0;z-index:999;height:54px;padding:0 12px;padding-bottom:env(safe-area-inset-bottom);box-sizing:content-box;background:#25d366;color:#fff !important;font-size:17px;font-weight:600;text-decoration:none !important;box-shadow:0 -2px 6px rgba(0,0,0,.15);}
+  .vq-wp-cubuk{display:flex;align-items:center;justify-content:center;gap:10px;position:fixed;left:0;right:0;bottom:var(--vq-alt,0px);z-index:999;height:54px;padding:0 12px;padding-bottom:env(safe-area-inset-bottom);box-sizing:content-box;background:#25d366;color:#fff !important;font-size:17px;font-weight:600;text-decoration:none !important;box-shadow:0 -2px 6px rgba(0,0,0,.15);}
+  html.vq-alt-var .vq-wp-cubuk{padding-bottom:0;box-sizing:border-box;}
   .vq-wp-cubuk:hover,.vq-wp-cubuk:focus{color:#fff !important;background:#1ebe5b;}
   .vq-wp-cubuk svg{width:24px;height:24px;flex:0 0 24px;fill:#fff;}
-  body{padding-bottom:calc(54px + env(safe-area-inset-bottom));}
+  body{padding-bottom:calc(54px + var(--vq-alt,0px) + env(safe-area-inset-bottom)) !important;}
 }
