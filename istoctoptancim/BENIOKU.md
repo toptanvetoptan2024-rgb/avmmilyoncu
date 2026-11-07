@@ -27,20 +27,28 @@ Tema CSS'inde şu parçalar zaten tanımlı; panelde ilgili ayar açılırsa kod
 ## cmtithalat XML kategori düzeltici – kurulum
 Sorun: cmtithalat XML'inde ürünün bütün kategorileri Kat2, Kat3, Kat4 diye yan yana yazılıyor.
 Qukasoft bunu "ana > alt kategori" sanıyor, ürünler yanlış yere (çoğu "Tv Ürünleri" altına) düşüyor.
-`xml-kategori-worker.js` her ürüne tek kategori yazar; fiyat, stok, resim ve açıklamaya dokunmaz.
 
-Kurallar (sırayla):
-1. Ürün adında "telefon tutucu", "tripod/tripot", "selfie" geçiyorsa → **Tablet ve Telefon Tutucular**
-2. Ürün adında "araba", "araç", "oto", "torpido" geçiyorsa → **Oto Aksesuarları**
-3. "Tv Ürünleri" yok sayılır; kalanlardan en özel olan seçilir
-   (Telefon Tutucular → Bebek Güvenlik → Evcil Hayvan → Ayak Bakım → Spor → Askı → Oto → Ev Mutfak Banyo)
-4. Başka kategorisi yoksa "Tv Ürünleri" olarak kalır.
+`xml-kategori-worker.js` ne yapar:
+- XML'deki **bütün ürünleri** aynen geçirir (ürün silinmez, eklenmez).
+- Her ürüne **tek bir ana kategori** yazar (`<Kat2>`). Kategori; ürün adı, açıklaması ve
+  tedarikçinin verdiği kategorilere bakılarak seçilir. "Tv Ürünleri" etiketi dikkate alınmaz.
+- Emin olunamayan ürünler tahminle bir yere konmaz → **"Kontrol Edilecek Ürünler"** kategorisine yazılır.
+- Ürün kodu, fiyat, KDV, stok, görsel, açıklama alanlarına **dokunmaz** (sadece `<kategoriler>` değişir).
+
+Adresler:
+- `https://<worker adresi>/` → Qukasoft'a verilecek düzeltilmiş XML
+- `https://<worker adresi>/rapor` → kategori başına ürün sayısı + kontrol listesi
 
 Kurulum adımları:
 1. Cloudflare panelinde **Workers & Pages → Oluştur → Worker** deyin, bir ad verin (ör. `istoc-xml`), **Deploy**.
 2. **Kodu düzenle (Edit code)** deyin, içindekini silin, `xml-kategori-worker.js` dosyasının tamamını yapıştırın, **Deploy**.
-3. Worker'ın **Ayarlar → Değişkenler ve Gizli Bilgiler** bölümüne `CMT_XML_URL` ekleyin;
-   değeri cmtithalat'tan aldığınız XML adresi. Adreste anahtar/şifre varsa türünü **Gizli (Secret)** seçin.
-4. Tarayıcıda Worker adresini açın (`https://istoc-xml.<hesabınız>.workers.dev/`) – düzeltilmiş XML görünmeli.
-5. Qukasoft panelinde XML adresi olarak cmtithalat adresi yerine bu Worker adresini yazın.
-   Qukasoft'ta daha önce yanlış açılmış kategoriler (ör. "Tv Ürünleri > Ev Mutfak Banyo Gereçleri") elle silinmeli/boşaltılmalı.
+3. Worker'ın **Ayarlar → Değişkenler ve Gizli Bilgiler** bölümüne `CMT_XML_URL` ekleyin, türünü **Gizli (Secret)** seçin.
+   Değeri: XML Havuzu'ndaki dışa aktarma adresiniz (`https://app.xmlhavuzu.com/_export/...`).
+   Bu adres bir erişim anahtarı içerir; bu yüzden depoya yazılmadı.
+4. Tarayıcıda `https://istoc-xml.<hesabınız>.workers.dev/rapor` açın – sayılar ve kontrol listesi görünmeli.
+5. Qukasoft panelinde XML adresi olarak eski adres yerine `https://istoc-xml.<hesabınız>.workers.dev/` yazın.
+6. Qukasoft'ta "Kontrol Edilecek Ürünler" kategorisini **pasif/gizli** yapın; o ürünlerin kategorisini elle seçin.
+   Daha önce yanlış açılmış kategoriler (ör. "Tv Ürünleri > Ev Mutfak Banyo Gereçleri") boşaltılıp kaldırılmalı.
+
+Kurallar `xml-kategori-worker.js` dosyasının başında: `KESIN_KURALLAR` (ürün adında geçerse kesin),
+`KELIMELER` (kategori anahtar kelimeleri), `ONCELIK` (eşitlikte hangisi seçilir).
