@@ -2,6 +2,7 @@
   TOPTAN VE TOPTAN – İŞ ORTAKLIĞI VE TALEP BAŞVURU FORMU
   Qukasoft panelinde "İş Ortaklığı Başvurusu" sayfasının içeriğine
   (Kaynak / HTML kodu modunda) bu dosyanın TAMAMI yapıştırılır.
+  Ayrı JavaScript dosyası GEREKMEZ; her şey bu tek koddadır.
   Form, sitenin kendi iletişim formu sistemini (contactForm) kullanır;
   başvurular panelde iletişim/talep mesajı olarak görünür.
   Tüm stiller ".tvt-bv" içine yazılmıştır, sitenin geri kalanını etkilemez.
@@ -69,6 +70,9 @@
 .tvt-bv .bv-ek h3 span{color:var(--o)}
 /* Alanlar */
 .tvt-bv .bv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 28px}
+.tvt-bv .bv-grid.bv-ortak{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 20px}
+.tvt-bv .bv-ortak .bv-in{padding-left:0}
+.tvt-bv .bv-ortak .bv-f.wide .bv-in{padding-left:42px}
 .tvt-bv .bv-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .tvt-bv .bv-f{margin-bottom:14px;min-width:0}
 .tvt-bv .bv-f.wide{grid-column:1/-1}
@@ -85,7 +89,7 @@
 .tvt-bv .bv-c::placeholder{color:#7b8696}
 .tvt-bv .bv-ta{position:relative}
 .tvt-bv .bv-count{position:absolute;right:14px;bottom:10px;font-size:14px;color:#4b5665;pointer-events:none}
-.tvt-bv .bv-c.err{border-color:#e0242b;box-shadow:0 0 0 3px rgba(224,36,43,.12)}
+.tvt-bv .bv-c.err,.tvt-bv .bv-c:user-invalid{border-color:#e0242b;box-shadow:0 0 0 3px rgba(224,36,43,.12)}
 .tvt-bv .bv-msg{display:block;min-height:0;font-size:13.5px;color:#c81e25;margin-top:5px}
 .tvt-bv .bv-hint{margin:16px 0 0;padding:12px 16px;border-radius:10px;background:var(--os);color:#7a4100;font-size:14.5px}
 .tvt-bv form:has(input[name="subject"]:checked) .bv-hint{display:none}
@@ -110,7 +114,7 @@
   .tvt-bv .bv-art{max-height:220px}
   .tvt-bv .bv-feats{flex-wrap:wrap;border-radius:18px;row-gap:14px}
   .tvt-bv .bv-feats li{flex:1 1 33%;border-right:0}
-  .tvt-bv .bv-grid{grid-template-columns:1fr 1fr}
+  .tvt-bv .bv-grid,.tvt-bv .bv-grid.bv-ortak{grid-template-columns:1fr 1fr}
 }
 @media (max-width:640px){
   .tvt-bv{padding:0 6px;margin-top:10px}
@@ -147,12 +151,12 @@
   .tvt-bv .bv-type[data-tur="uretici"] b,.tvt-bv .bv-type[data-tur="uretici"] small{display:block}
   .tvt-bv .bv-grid,.tvt-bv .bv-grid-2{grid-template-columns:1fr}
   .tvt-bv .bv-grid.bv-ortak{grid-template-columns:1fr 1fr;gap:0 10px}
-  .tvt-bv .bv-ortak .bv-f.ep{grid-column:1/-1}
+  .tvt-bv .bv-ortak .bv-f.ep,.tvt-bv .bv-ortak .bv-f.sehir{grid-column:1/-1}
   .tvt-bv .bv-lab{gap:8px;margin-bottom:6px}
   .tvt-bv .bv-lab svg{width:24px;height:24px}
   .tvt-bv .bv-lab label{font-size:15.5px}
   .tvt-bv .bv-in{padding-left:0}
-  .tvt-bv .bv-ortak .bv-f.ep .bv-in,.tvt-bv .bv-ortak .bv-f.wide .bv-in{padding-left:32px}
+  .tvt-bv .bv-ortak .bv-f.ep .bv-in,.tvt-bv .bv-ortak .bv-f.sehir .bv-in,.tvt-bv .bv-ortak .bv-f.wide .bv-in{padding-left:32px}
   .tvt-bv input.bv-c,.tvt-bv select.bv-c{height:44px;font-size:15px;padding:8px 12px}
   .tvt-bv .bv-kvkk{margin-left:0;font-size:13.5px}
   .tvt-bv .bv-btn{font-size:19px;padding:15px}
@@ -162,7 +166,7 @@
   .tvt-bv .bv-top{grid-template-columns:1fr}
   .tvt-bv .bv-art{max-height:130px}
   .tvt-bv .bv-grid.bv-ortak{grid-template-columns:1fr}
-  .tvt-bv .bv-ortak .bv-f.ep .bv-in,.tvt-bv .bv-ortak .bv-f.wide .bv-in{padding-left:0}
+  .tvt-bv .bv-ortak .bv-f.ep .bv-in,.tvt-bv .bv-ortak .bv-f.sehir .bv-in,.tvt-bv .bv-ortak .bv-f.wide .bv-in{padding-left:0}
 }
 </style>
 
@@ -234,7 +238,7 @@
 
   <!-- ===== Form kartı ===== -->
   <div class="bv-card">
-    <form class="contact-form" id="tvt-bv-form" action="" method="post" novalidate onsubmit="return window.tvtBasvuruGonder ? tvtBasvuruGonder(this) : contactForm(this)">
+    <form class="contact-form" id="tvt-bv-form" action="" method="post" onsubmit="var f=this,el=f.elements,s=f.querySelector('input[name=subject]:checked'),L=[],E=null;if(el.tvt_web.value)return false;f.querySelectorAll('.bv-ek[data-ek='+s.parentNode.getAttribute('data-tur')+'] .bv-c').forEach(function(x){var v=x.value.trim(),m=x.parentNode.querySelector('.bv-msg');x.classList.remove('err');m.textContent='';if(x.getAttribute('data-req')?v.length>1?0:1:0){x.classList.add('err');m.textContent='Bu alanı doldurunuz.';E=E||x}if(v)L.push(x.getAttribute('data-label')+': '+v)});var t=el.phone.value.replace(/\D/g,'').replace(/^(90|0)/,''),pm=el.phone.parentNode.querySelector('.bv-msg');el.phone.classList.remove('err');pm.textContent='';if(!/^5\d{9}$/.test(t)){el.phone.classList.add('err');pm.textContent='Geçerli bir cep telefonu yazınız (örnek: 0532 123 45 67).';E=E||el.phone}if(E){E.scrollIntoView({block:'center'});E.focus();return false}el.phone.value='0'+t.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/,'$1 $2 $3 $4');el.message.value='BAŞVURU TÜRÜ: '+s.value+'\nAd Soyad: '+el.name.value.trim()+'\nTelefon: '+el.phone.value+'\nE-Posta: '+el.email.value.trim()+'\nŞehir: '+el.tvt_sehir.value+(L.length?'\n\n--- Ek Bilgiler ---\n'+L.join('\n'):'')+'\n\n--- Başvuru Detayı ---\n'+el.tvt_detay.value.trim()+'\n\n(KVKK onayı verildi)';return contactForm(f)">
       <div class="bv-sec">
         <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 9h6M9 13h6M9 17h4"/></svg>Başvuru Türü Seçiniz <span class="req">*</span></h2>
         <p>Size uygun başvuru türünü seçerek formu doldurunuz.</p>
@@ -242,7 +246,7 @@
 
       <fieldset class="bv-types" aria-label="Başvuru türü">
         <label class="bv-type" data-tur="dukkan">
-          <input type="radio" name="subject" id="tvt-t-dukkan" value="Dükkan Açmak İstiyorum">
+          <input type="radio" name="subject" id="tvt-t-dukkan" required value="Dükkan Açmak İstiyorum">
           <span class="box"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M6 18l4-10h28l4 10"/><path d="M6 18c0 3 2.5 5 5.5 5s5.5-2 5.5-5c0 3 2.5 5 5.5 5h3c3 0 5.5-2 5.5-5 0 3 2.5 5 5.5 5S42 21 42 18z"/><path d="M9 23v18h30V23M20 41V31h8v10"/><path d="M14 18l2-10M24 18V8M34 18l-2-10"/></svg>
             <span><b>Dükkan Açmak İstiyorum</b><small>Toptan iş modeliyle kendi işimi kurmak istiyorum.</small></span></span>
           <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
@@ -281,8 +285,6 @@
         <div class="bv-grid bv-grid-2">
           <div class="bv-f"><label for="tvt-d1">Açılacak işletme / mağaza adı <span class="req">*</span></label>
             <input class="bv-c" id="tvt-d1" name="tvt_isletme_adi" data-label="Açılacak işletme / mağaza adı" data-req="1" maxlength="100" placeholder="Örn: Yıldız Ticaret"><span class="bv-msg"></span></div>
-          <div class="bv-f"><label for="tvt-d2">Şehir <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-d2" name="tvt_dukkan_sehir" data-label="Şehir" data-req="1" data-il></select><span class="bv-msg"></span></div>
           <div class="bv-f wide"><label for="tvt-d3">İşletme hakkında bilgi <span class="req">*</span></label>
             <textarea class="bv-c" id="tvt-d3" name="tvt_isletme_bilgi" data-label="İşletme hakkında bilgi" data-req="1" maxlength="500" rows="3" placeholder="Mağaza büyüklüğü, satmayı düşündüğünüz ürün grupları, planladığınız açılış zamanı..."></textarea><span class="bv-msg"></span></div>
         </div>
@@ -290,7 +292,7 @@
 
       <div class="bv-ek bv-ek-cin" data-ek="cin">
         <h3><span>Çin'den Mal Getirmek İstiyorum</span> – Ek Bilgiler</h3>
-        <div class="bv-grid bv-grid-2">
+        <div class="bv-grid">
           <div class="bv-f"><label for="tvt-c1">Getirilmek istenen ürün(ler) <span class="req">*</span></label>
             <input class="bv-c" id="tvt-c1" name="tvt_cin_urunler" data-label="Getirilmek istenen ürün(ler)" data-req="1" maxlength="200" placeholder="Örn: Mutfak gereçleri, oyuncak"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-c2">Tahmini miktar veya bütçe <span class="req">*</span></label>
@@ -298,34 +300,28 @@
           <div class="bv-f"><label for="tvt-c3">İthalat deneyiminiz <span class="req">*</span></label>
             <select class="bv-c" id="tvt-c3" name="tvt_cin_deneyim" data-label="İthalat deneyimi" data-req="1">
               <option value="">Seçiniz</option><option>İlk kez getireceğim</option><option>Daha önce ithalat yaptım</option><option>Düzenli ithalat yapıyorum</option></select><span class="bv-msg"></span></div>
-          <div class="bv-f"><label for="tvt-c4">Teslimat şehri <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-c4" name="tvt_cin_sehir" data-label="Teslimat şehri" data-req="1" data-il></select><span class="bv-msg"></span></div>
         </div>
       </div>
 
       <div class="bv-ek bv-ek-yatirimci" data-ek="yatirimci">
         <h3><span>Yatırımcı Olmak İstiyorum</span> – Ek Bilgiler</h3>
-        <div class="bv-grid">
+        <div class="bv-grid bv-grid-2">
           <div class="bv-f"><label for="tvt-y1">Yatırım bütçesi <span class="req">*</span></label>
             <select class="bv-c" id="tvt-y1" name="tvt_yatirim_butce" data-label="Yatırım bütçesi" data-req="1">
               <option value="">Seçiniz</option><option>500.000 TL altı</option><option>500.000 – 1.000.000 TL</option><option>1.000.000 – 5.000.000 TL</option><option>5.000.000 TL üzeri</option></select><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-y2">İlgilendiğiniz alan <span class="req">*</span></label>
             <select class="bv-c" id="tvt-y2" name="tvt_yatirim_alan" data-label="İlgilendiği alan" data-req="1">
               <option value="">Seçiniz</option><option>Mağaza / bayilik</option><option>Depo ve lojistik</option><option>İthalat ve tedarik</option><option>Henüz karar vermedim</option></select><span class="bv-msg"></span></div>
-          <div class="bv-f"><label for="tvt-y3">Şehir <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-y3" name="tvt_yatirim_sehir" data-label="Şehir" data-req="1" data-il></select><span class="bv-msg"></span></div>
         </div>
       </div>
 
       <div class="bv-ek bv-ek-teklif" data-ek="teklif">
         <h3><span>Özel Teklif Talebi</span> – Ek Bilgiler</h3>
-        <div class="bv-grid bv-grid-2">
+        <div class="bv-grid">
           <div class="bv-f"><label for="tvt-t1">Teklif istenen ürün <span class="req">*</span></label>
             <input class="bv-c" id="tvt-t1" name="tvt_teklif_urun" data-label="Teklif istenen ürün" data-req="1" maxlength="150" placeholder="Ürün adı, marka, model veya ürün kodu"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-t2">Talep edilen miktar <span class="req">*</span></label>
             <input class="bv-c" id="tvt-t2" name="tvt_teklif_miktar" data-label="Talep edilen miktar" data-req="1" maxlength="60" placeholder="Örn: 500 koli"><span class="bv-msg"></span></div>
-          <div class="bv-f"><label for="tvt-t3">Teslimat şehri <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-t3" name="tvt_teklif_sehir" data-label="Teslimat şehri" data-req="1" data-il></select><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-t4">Ne zaman ihtiyacınız var?</label>
             <select class="bv-c" id="tvt-t4" name="tvt_teklif_zaman" data-label="İhtiyaç zamanı">
               <option value="">Seçiniz</option><option>Hemen</option><option>1 ay içinde</option><option>1–3 ay içinde</option><option>Belli değil</option></select><span class="bv-msg"></span></div>
@@ -334,15 +330,13 @@
 
       <div class="bv-ek bv-ek-uretici" data-ek="uretici">
         <h3><span>Üreticiyim</span> – Ek Bilgiler</h3>
-        <div class="bv-grid bv-grid-2">
+        <div class="bv-grid">
           <div class="bv-f"><label for="tvt-u1">Firma adı <span class="req">*</span></label>
             <input class="bv-c" id="tvt-u1" name="tvt_uretici_firma" data-label="Firma adı" data-req="1" maxlength="120" placeholder="Ticari unvanınız"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-u2">Ürettiğiniz ürün grubu <span class="req">*</span></label>
             <input class="bv-c" id="tvt-u2" name="tvt_uretici_urun" data-label="Ürettiği ürün grubu" data-req="1" maxlength="150" placeholder="Örn: Plastik ev gereçleri"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-u3">Aylık üretim kapasitesi</label>
             <input class="bv-c" id="tvt-u3" name="tvt_uretici_kapasite" data-label="Aylık üretim kapasitesi" maxlength="80" placeholder="Örn: 10.000 adet"><span class="bv-msg"></span></div>
-          <div class="bv-f"><label for="tvt-u4">Üretim yeri (şehir) <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-u4" name="tvt_uretici_sehir" data-label="Üretim yeri" data-req="1" data-il></select><span class="bv-msg"></span></div>
         </div>
       </div>
 
@@ -352,19 +346,23 @@
       <div class="bv-grid bv-ortak">
         <div class="bv-f">
           <div class="bv-lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg><label for="tvt-ad">Ad Soyad <span class="req">*</span></label></div>
-          <div class="bv-in"><input class="bv-c" id="tvt-ad" name="name" type="text" maxlength="80" autocomplete="name" placeholder="Adınızı ve soyadınızı yazınız"><span class="bv-msg"></span></div>
+          <div class="bv-in"><input class="bv-c" id="tvt-ad" name="name" type="text" required pattern=".*\S+\s+\S+.*" title="Adınızı ve soyadınızı yazınız" maxlength="80" autocomplete="name" placeholder="Adınızı ve soyadınızı yazınız"><span class="bv-msg"></span></div>
         </div>
         <div class="bv-f">
           <div class="bv-lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 006 6L16 13l5 2v4a2 2 0 01-2 2A17 17 0 013 5a2 2 0 012-2z"/></svg><label for="tvt-tel">Telefon <span class="req">*</span></label></div>
-          <div class="bv-in"><input class="bv-c" id="tvt-tel" name="phone" type="tel" inputmode="tel" maxlength="17" autocomplete="tel" placeholder="05XX XXX XX XX"><span class="bv-msg"></span></div>
+          <div class="bv-in"><input class="bv-c" id="tvt-tel" name="phone" type="tel" required pattern="[0-9 +()\-]{10,17}" title="Örnek: 0532 123 45 67" inputmode="tel" maxlength="17" autocomplete="tel" placeholder="05XX XXX XX XX"><span class="bv-msg"></span></div>
         </div>
         <div class="bv-f ep">
           <div class="bv-lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><label for="tvt-ep">E-Posta <span class="req">*</span></label></div>
-          <div class="bv-in"><input class="bv-c" id="tvt-ep" name="email" type="email" maxlength="120" autocomplete="email" placeholder="ornek@firmaadiniz.com"><span class="bv-msg"></span></div>
+          <div class="bv-in"><input class="bv-c" id="tvt-ep" name="email" type="email" required maxlength="120" autocomplete="email" placeholder="ornek@firmaadiniz.com"><span class="bv-msg"></span></div>
+        </div>
+        <div class="bv-f sehir">
+          <div class="bv-lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0119 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><label for="tvt-sehir">Şehir <span class="req">*</span></label></div>
+          <div class="bv-in"><select class="bv-c" id="tvt-sehir" name="tvt_sehir" required><option value="">Şehir seçiniz</option><option>Adana</option><option>Adıyaman</option><option>Afyonkarahisar</option><option>Ağrı</option><option>Aksaray</option><option>Amasya</option><option>Ankara</option><option>Antalya</option><option>Ardahan</option><option>Artvin</option><option>Aydın</option><option>Balıkesir</option><option>Bartın</option><option>Batman</option><option>Bayburt</option><option>Bilecik</option><option>Bingöl</option><option>Bitlis</option><option>Bolu</option><option>Burdur</option><option>Bursa</option><option>Çanakkale</option><option>Çankırı</option><option>Çorum</option><option>Denizli</option><option>Diyarbakır</option><option>Düzce</option><option>Edirne</option><option>Elazığ</option><option>Erzincan</option><option>Erzurum</option><option>Eskişehir</option><option>Gaziantep</option><option>Giresun</option><option>Gümüşhane</option><option>Hakkari</option><option>Hatay</option><option>Iğdır</option><option>Isparta</option><option>İstanbul</option><option>İzmir</option><option>Kahramanmaraş</option><option>Karabük</option><option>Karaman</option><option>Kars</option><option>Kastamonu</option><option>Kayseri</option><option>Kilis</option><option>Kırıkkale</option><option>Kırklareli</option><option>Kırşehir</option><option>Kocaeli</option><option>Konya</option><option>Kütahya</option><option>Malatya</option><option>Manisa</option><option>Mardin</option><option>Mersin</option><option>Muğla</option><option>Muş</option><option>Nevşehir</option><option>Niğde</option><option>Ordu</option><option>Osmaniye</option><option>Rize</option><option>Sakarya</option><option>Samsun</option><option>Şanlıurfa</option><option>Siirt</option><option>Sinop</option><option>Sivas</option><option>Şırnak</option><option>Tekirdağ</option><option>Tokat</option><option>Trabzon</option><option>Tunceli</option><option>Uşak</option><option>Van</option><option>Yalova</option><option>Yozgat</option><option>Zonguldak</option><option>Yurt dışı</option></select><span class="bv-msg"></span></div>
         </div>
         <div class="bv-f wide">
           <div class="bv-lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 4h16v12H9l-5 4z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01" stroke-width="2.6" stroke-linecap="round"/></svg><label for="tvt-detay">Başvurunuz Hakkında Detay <span class="req">*</span></label></div>
-          <div class="bv-in"><div class="bv-ta"><textarea class="bv-c" id="tvt-detay" name="tvt_detay" maxlength="1000" rows="4" placeholder="Talebiniz, planınız veya başvurunuz hakkında detaylı bilgi yazınız..."></textarea><span class="bv-count" aria-live="polite"><span data-count>0</span> / 1000</span></div><span class="bv-msg"></span></div>
+          <div class="bv-in"><div class="bv-ta"><textarea class="bv-c" id="tvt-detay" name="tvt_detay" required minlength="10" maxlength="1000" oninput="this.parentNode.querySelector('[data-count]').textContent=this.value.length" rows="4" placeholder="Talebiniz, planınız veya başvurunuz hakkında detaylı bilgi yazınız..."></textarea><span class="bv-count" aria-live="polite"><span data-count>0</span> / 1000</span></div><span class="bv-msg"></span></div>
         </div>
       </div>
 
@@ -372,7 +370,7 @@
       <input type="hidden" name="message" value="">
       <div class="bv-hp" aria-hidden="true"><input type="text" name="tvt_web" tabindex="-1" autocomplete="off"></div>
 
-      <label class="bv-kvkk"><input type="checkbox" name="tvt_onay" value="1"><span>Kişisel verilerimin başvurumun değerlendirilmesi ve benimle iletişime geçilmesi amacıyla işlenmesini kabul ediyorum. <a href="/gizlilik-sozlesmesi" target="_blank">Gizlilik Sözleşmesi</a> <span class="req">*</span></span></label>
+      <label class="bv-kvkk"><input type="checkbox" name="tvt_onay" value="1" required><span>Kişisel verilerimin başvurumun değerlendirilmesi ve benimle iletişime geçilmesi amacıyla işlenmesini kabul ediyorum. <a href="/gizlilik-sozlesmesi" target="_blank">Gizlilik Sözleşmesi</a> <span class="req">*</span></span></label>
       <span class="bv-msg" data-err="onay"></span>
 
       <button type="submit" class="bv-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 2L2 10.5l7 2.5 2.5 7L22 2zM9.8 12.4l8.4-7.3-6.4 8.9-.9 3.5z"/></svg>BAŞVURUYU GÖNDER</button>
@@ -380,119 +378,3 @@
     </form>
   </div>
 </div>
-
-<script type="text/javascript">
-(function () {
-  var IL = ['Adana','Adıyaman','Afyonkarahisar','Ağrı','Aksaray','Amasya','Ankara','Antalya','Ardahan','Artvin','Aydın','Balıkesir','Bartın','Batman','Bayburt','Bilecik','Bingöl','Bitlis','Bolu','Burdur','Bursa','Çanakkale','Çankırı','Çorum','Denizli','Diyarbakır','Düzce','Edirne','Elazığ','Erzincan','Erzurum','Eskişehir','Gaziantep','Giresun','Gümüşhane','Hakkari','Hatay','Iğdır','Isparta','İstanbul','İzmir','Kahramanmaraş','Karabük','Karaman','Kars','Kastamonu','Kayseri','Kilis','Kırıkkale','Kırklareli','Kırşehir','Kocaeli','Konya','Kütahya','Malatya','Manisa','Mardin','Mersin','Muğla','Muş','Nevşehir','Niğde','Ordu','Osmaniye','Rize','Sakarya','Samsun','Şanlıurfa','Siirt','Sinop','Sivas','Şırnak','Tekirdağ','Tokat','Trabzon','Tunceli','Uşak','Van','Yalova','Yozgat','Zonguldak','Yurt dışı'];
-
-  function kur() {
-    var form = document.getElementById('tvt-bv-form');
-    if (!form || form.getAttribute('data-hazir')) return;
-    form.setAttribute('data-hazir', '1');
-
-    // Şehir listeleri
-    var sel = form.querySelectorAll('select[data-il]');
-    for (var i = 0; i < sel.length; i++) {
-      var h = '<option value="">Şehir seçiniz</option>';
-      for (var j = 0; j < IL.length; j++) h += '<option>' + IL[j] + '</option>';
-      sel[i].innerHTML = h;
-    }
-
-    // Türe göre ek alanları göster (eski tarayıcılar için de)
-    function goster() {
-      var secili = form.querySelector('input[name="subject"]:checked');
-      var tur = secili ? secili.parentNode.getAttribute('data-tur') : '';
-      var ekler = form.querySelectorAll('.bv-ek');
-      for (var k = 0; k < ekler.length; k++) {
-        ekler[k].className = ekler[k].className.replace(/\s?on\b/g, '') + (ekler[k].getAttribute('data-ek') === tur ? ' on' : '');
-      }
-      hataYaz(form.querySelector('[data-err="subject"]'), '');
-    }
-    var radyo = form.querySelectorAll('input[name="subject"]');
-    for (var r = 0; r < radyo.length; r++) radyo[r].addEventListener('change', goster);
-
-    // Bağlantıdan tür seçimi: ?tur=yatirimci gibi
-    var m = /[?&]tur=([a-z]+)/.exec(location.search);
-    if (m && document.getElementById('tvt-t-' + m[1])) document.getElementById('tvt-t-' + m[1]).checked = true;
-    goster();
-
-    // Karakter sayacı
-    var detay = document.getElementById('tvt-detay');
-    var sayac = form.querySelector('[data-count]');
-    detay.addEventListener('input', function () { sayac.textContent = detay.value.length; });
-
-    // Yazmaya başlayınca hatayı temizle
-    form.addEventListener('input', function (e) {
-      if (e.target.classList && e.target.classList.contains('err')) alanHata(e.target, '');
-    });
-  }
-
-  function hataYaz(el, msg) { if (el) el.textContent = msg; }
-  function alanHata(alan, msg) {
-    if (msg) alan.classList.add('err'); else alan.classList.remove('err');
-    var k = alan.parentNode.querySelector('.bv-msg') || (alan.parentNode.parentNode && alan.parentNode.parentNode.querySelector('.bv-msg'));
-    hataYaz(k, msg);
-  }
-  function temiz(v) { return String(v || '').replace(/\s+/g, ' ').trim(); }
-  function telefon(v) {
-    var d = String(v || '').replace(/\D/g, '');
-    var m = d.match(/^(?:90|0)?(5\d{9})$/);
-    return m ? '0' + m[1].replace(/(\d{3})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4') : '';
-  }
-
-  window.tvtBasvuruGonder = function (form) {
-    if (form.tvt_web && form.tvt_web.value) return false; // bot tuzağı
-    var ilk = null, i;
-    function hata(alan, msg) { alanHata(alan, msg); if (!ilk) ilk = alan; }
-
-    var secili = form.querySelector('input[name="subject"]:checked');
-    hataYaz(form.querySelector('[data-err="subject"]'), secili ? '' : 'Lütfen başvuru türünü seçiniz.');
-    if (!secili) ilk = form.querySelector('.bv-types');
-
-    // Ek alanlar (yalnızca seçilen tür)
-    var satirlar = [];
-    if (secili) {
-      var tur = secili.parentNode.getAttribute('data-tur');
-      var ek = form.querySelectorAll('.bv-ek[data-ek="' + tur + '"] .bv-c');
-      for (i = 0; i < ek.length; i++) {
-        var v = ek[i].tagName === 'TEXTAREA' ? String(ek[i].value || '').trim() : temiz(ek[i].value);
-        if (ek[i].getAttribute('data-req') && v.length < 2) hata(ek[i], 'Bu alanı doldurunuz.');
-        else alanHata(ek[i], '');
-        if (v) satirlar.push(ek[i].getAttribute('data-label') + ': ' + v);
-      }
-    }
-
-    var ad = form.name, tel = form.phone, ep = form.email, dt = document.getElementById('tvt-detay');
-    ad.value = temiz(ad.value);
-    if (ad.value.length < 5 || ad.value.indexOf(' ') < 0) hata(ad, 'Adınızı ve soyadınızı yazınız.'); else alanHata(ad, '');
-    var t = telefon(tel.value);
-    if (!t) hata(tel, 'Geçerli bir cep telefonu yazınız (örnek: 0532 123 45 67).'); else { tel.value = t; alanHata(tel, ''); }
-    ep.value = temiz(ep.value).toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(ep.value)) hata(ep, 'Geçerli bir e-posta adresi yazınız.'); else alanHata(ep, '');
-    var detay = String(dt.value || '').trim();
-    if (detay.length < 10) hata(dt, 'Başvurunuz hakkında kısa bir açıklama yazınız.'); else alanHata(dt, '');
-    var onay = form.tvt_onay.checked;
-    hataYaz(form.querySelector('[data-err="onay"]'), onay ? '' : 'Devam etmek için onay kutusunu işaretleyiniz.');
-    if (!onay && !ilk) ilk = form.tvt_onay;
-
-    if (ilk) {
-      if (ilk.scrollIntoView) ilk.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (ilk.focus) try { ilk.focus({ preventScroll: true }); } catch (e) { ilk.focus(); }
-      return false;
-    }
-
-    // Panelde tek mesaj olarak okunacak düzenli metin
-    form.message.value =
-      'BAŞVURU TÜRÜ: ' + secili.value + '\n' +
-      'Ad Soyad: ' + ad.value + '\nTelefon: ' + tel.value + '\nE-Posta: ' + ep.value + '\n' +
-      (satirlar.length ? '\n--- Ek Bilgiler ---\n' + satirlar.join('\n') + '\n' : '') +
-      '\n--- Başvuru Detayı ---\n' + detay +
-      '\n\n(KVKK onayı verildi)';
-
-    if (typeof window.contactForm === 'function') return window.contactForm(form);
-    return true;
-  };
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kur); else kur();
-})();
-</script>

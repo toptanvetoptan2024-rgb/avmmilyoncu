@@ -13,12 +13,9 @@ Bu klasör AVM Milyoncu sitesinin parçası değildir. toptanvetoptan.com Qukaso
 7. Panelde iletişim/talep mesajlarına düştüğünü kontrol edin.
 
 ## Notlar
+- Ayrı JavaScript veya CSS kodu GEREKMEZ. Tema ayarlarına daha önce CSS eklediyseniz silebilirsiniz.
 - Form, sitenin kendi `contactForm` gönderimini kullanır. Seçilen tür "Konu" olarak,
   ek alanlar ve açıklama tek düzenli mesaj olarak panele gider.
-- Panel `<script>` etiketini siliyorsa: dosyanın en altındaki `<script>...</script>` bölümünü
-  Qukasoft'ta tema/alt bilgi (footer) özel kod alanına ekleyin. Kod yalnızca bu formun bulunduğu
-  sayfada çalışır.
-- Bağlantıyla tür seçili açmak için: `/is-ortakligi-basvurusu?tur=yatirimci`
-  (dukkan, cin, yatirimci, teklif, uretici).
+- Türe göre ek alanların açılması yalnızca CSS ile yapılır (güncel tarayıcılarda çalışır).
 - "6.000+ Ürün Çeşidi" ifadesi tasarımdan alınmıştır; sayı güncel değilse metinden düzeltin.
 - `onizleme.html` yalnızca deneme içindir, siteye yüklenmez.
