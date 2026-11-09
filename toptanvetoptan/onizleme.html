@@ -1,0 +1,8 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Önizleme – İş Ortaklığı Başvurusu</title>
+<style>body{margin:0;background:#f1f2f5}.not{background:#10264B;color:#fff;font:14px Arial;padding:8px 12px;text-align:center}</style>
+<script>/* Yalnızca önizleme: Qukasoft'un contactForm işlevinin taklidi. Gerçek sitede bu kısım YOK. */
+window.contactForm=function(f){alert('ÖNİZLEME – Panele gidecek mesaj:\n\n'+f.message.value);window.__son=f.message.value;return false;};</script>
+</head><body><div class="not">Önizleme sayfası – gerçek gönderim yapılmaz</div>
+<div id="yer"></div>
+<script>fetch('is-ortakligi-basvurusu.html').then(r=>r.text()).then(h=>{var y=document.getElementById('yer');y.innerHTML=h;y.querySelectorAll('script').forEach(s=>{var n=document.createElement('script');n.text=s.text;document.body.appendChild(n);});});</script>
+</body></html>
