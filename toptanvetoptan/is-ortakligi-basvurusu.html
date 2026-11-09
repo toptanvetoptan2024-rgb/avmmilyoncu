@@ -1,43 +1,19 @@
-<!-- ============================================================
-  TOPTAN VE TOPTAN – İŞ ORTAKLIĞI VE TALEP BAŞVURU FORMU
-  Qukasoft panelinde "İş Ortaklığı Başvurusu" sayfasının içeriğine
-  (Kaynak / HTML kodu modunda) bu dosyanın TAMAMI yapıştırılır.
-  Ayrı JavaScript dosyası GEREKMEZ; her şey bu tek koddadır.
-  Form, sitenin kendi iletişim formu sistemini (contactForm) kullanır;
-  başvurular panelde iletişim/talep mesajı olarak görünür.
-  Tüm stiller ".tvt-bv" içine yazılmıştır, sitenin geri kalanını etkilemez.
-============================================================ -->
+<!-- TOPTAN VE TOPTAN – İŞ ORTAKLIĞI BAŞVURU FORMU
+  Panelde "İş Ortaklığı Başvurusu" sayfasının içeriğine (Kaynak / HTML modunda) TAMAMI yapıştırılır.
+  Ayrı CSS veya JavaScript gerekmez. -->
 <style type="text/css">
 .tvt-bv{--o:#FF7F00;--o2:#E86F00;--os:#FFF4E8;--n:#10264B;--n2:#1d3a6b;--t:#1f2a37;--m:#5f6b7a;--l:#dfe3ea;--bg:#f4f6f9;
   font-family:'Roboto',Arial,sans-serif;color:var(--t);max-width:1300px;margin:20px auto 40px;padding:0 12px;box-sizing:border-box}
 .tvt-bv *,.tvt-bv *:before,.tvt-bv *:after{box-sizing:border-box}
 .tvt-bv svg{display:block}
-/* ---------- Üst alan ---------- */
-.tvt-bv .bv-hero{position:relative;overflow:hidden;border-radius:22px;background:linear-gradient(115deg,#fff 0%,#f6f8fb 48%,#eaf0f8 100%);
-  padding:34px 36px 30px;box-shadow:0 10px 30px rgba(16,38,75,.08)}
-.tvt-bv .bv-hero:before{content:"";position:absolute;right:-60px;bottom:-60px;width:220px;height:220px;background:var(--o);transform:rotate(45deg);opacity:.95}
-.tvt-bv .bv-hero:after{content:"";position:absolute;left:-70px;bottom:-90px;width:170px;height:170px;background:var(--n);transform:rotate(45deg)}
-.tvt-bv .bv-top{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:center}
-.tvt-bv .bv-head{display:flex;align-items:center;gap:26px}
-.tvt-bv .bv-logo{flex:none;text-align:center}
-.tvt-bv .bv-logo .lg{display:flex;align-items:center;gap:6px;font-weight:900;font-size:30px;color:var(--n);letter-spacing:-.5px;line-height:1}
-.tvt-bv .bv-logo .ve{background:var(--o);color:#fff;font-size:13px;font-weight:800;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center}
-.tvt-bv .bv-logo .tag{display:block;margin-top:8px;font-size:11.5px;font-weight:800;letter-spacing:1.2px;color:var(--n)}
-.tvt-bv .bv-logo .mark{width:56px;height:34px;margin:0 auto 6px}
-.tvt-bv .bv-div{width:2px;align-self:stretch;background:var(--n);opacity:.85;min-height:110px}
-.tvt-bv h1.bv-title{margin:0;font-size:40px;line-height:1.08;font-weight:900;color:var(--n);letter-spacing:-.5px}
-.tvt-bv h1.bv-title span{display:block;color:var(--o)}
-.tvt-bv .bv-sub{margin:12px 0 0;font-size:17px;line-height:1.5;color:#2c3a4f;max-width:520px}
-.tvt-bv .bv-art{width:100%;height:auto;max-height:260px}
-.tvt-bv .bv-feats{position:relative;z-index:1;display:flex;margin-top:22px;background:#fff;border-radius:60px;box-shadow:0 6px 22px rgba(16,38,75,.08);
-  padding:14px 10px;max-width:820px;list-style:none}
-.tvt-bv .bv-feats li{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:0 8px;font-weight:800;font-size:15px;line-height:1.2;color:var(--n);border-right:1px solid var(--l)}
-.tvt-bv .bv-feats li:last-child{border-right:0}
-.tvt-bv .bv-feats svg{width:34px;height:34px;color:var(--o)}
-/* ---------- Form kartı ---------- */
-.tvt-bv .bv-card{position:relative;z-index:2;background:#fff;border-radius:22px;box-shadow:0 14px 40px rgba(16,38,75,.10);margin:-6px 10px 0;padding:30px 34px 34px}
+/* ---------- Üst kısım: başlık, açıklama, banner ---------- */
+.tvt-bv .bv-ust{text-align:center;margin-bottom:26px}
+.tvt-bv .bv-ust h2{margin:0 0 10px;font-size:34px;font-weight:900;color:#222;font-family:Arial,sans-serif}
+.tvt-bv .bv-ust p{margin:0 0 22px;color:#666;font-size:16px}
+.tvt-bv .bv-banner img{width:100%;height:auto;display:block;border-radius:12px}
+.tvt-bv .bv-card{position:relative;z-index:2;background:#fff;border-radius:22px;box-shadow:0 14px 40px rgba(16,38,75,.10);margin:0;padding:30px 34px 34px;border:1px solid #e5e5e5}
 .tvt-bv .bv-sec{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-.tvt-bv .bv-sec h2{display:flex;align-items:center;gap:14px;margin:0;font-size:23px;font-weight:800;color:var(--n)}
+.tvt-bv .bv-sec h2{text-align:left;display:flex;align-items:center;gap:14px;margin:0;font-size:23px;font-weight:800;color:var(--n)}
 .tvt-bv .bv-sec h2 svg{width:36px;height:36px;color:var(--n)}
 .tvt-bv .bv-sec p{margin:0;font-size:15px;color:#3b4656}
 .tvt-bv .req{color:#e0242b;font-weight:800}
@@ -46,7 +22,7 @@
 .tvt-bv .bv-type input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .tvt-bv .bv-type .box{height:100%;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:20px 14px 18px;border:1.5px solid #cfd6e0;border-radius:14px;background:#fff;transition:.2s}
 .tvt-bv .bv-type .box svg{width:54px;height:54px;color:var(--o)}
-.tvt-bv .bv-type[data-tur="cin"] .box svg,.tvt-bv .bv-type[data-tur="uretici"] .box svg{color:var(--n)}
+.tvt-bv .bv-type.t-cin .box svg,.tvt-bv .bv-type.t-uretici .box svg{color:var(--n)}
 .tvt-bv .bv-type b,.tvt-bv .bv-type small{display:block}
 .tvt-bv .bv-type small{margin-top:6px}
 .tvt-bv .bv-type b{font-size:20px;line-height:1.15;font-weight:800;color:var(--n)}
@@ -60,7 +36,6 @@
 .tvt-bv hr.bv-hr{border:0;border-top:1px solid #e6e9ef;margin:24px 0}
 /* Ek alanlar: seçilen türe göre görünür */
 .tvt-bv .bv-ek{display:none;background:#fafbfd;border:1px dashed #cfd6e0;border-radius:14px;padding:18px 20px 6px;margin-top:22px}
-.tvt-bv .bv-ek.on,
 .tvt-bv form:has(#tvt-t-dukkan:checked) .bv-ek-dukkan,
 .tvt-bv form:has(#tvt-t-cin:checked) .bv-ek-cin,
 .tvt-bv form:has(#tvt-t-yatirimci:checked) .bv-ek-yatirimci,
@@ -107,34 +82,18 @@
 /* ---------- Duyarlı görünüm ---------- */
 @media (max-width:1100px){
   .tvt-bv .bv-types{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .tvt-bv h1.bv-title{font-size:34px}
 }
 @media (max-width:900px){
-  .tvt-bv .bv-top{grid-template-columns:1fr}
-  .tvt-bv .bv-art{max-height:220px}
-  .tvt-bv .bv-feats{flex-wrap:wrap;border-radius:18px;row-gap:14px}
-  .tvt-bv .bv-feats li{flex:1 1 33%;border-right:0}
   .tvt-bv .bv-grid,.tvt-bv .bv-grid.bv-ortak{grid-template-columns:1fr 1fr}
 }
 @media (max-width:640px){
+  .tvt-bv .bv-ust h2{font-size:24px}
+  .tvt-bv .bv-ust p{font-size:14.5px;margin-bottom:16px}
+  .tvt-bv .bv-ust{margin-bottom:20px}
   .tvt-bv{padding:0 6px;margin-top:10px}
-  .tvt-bv .bv-hero{padding:18px 14px 16px;border-radius:16px}
-  .tvt-bv .bv-hero:before{width:90px;height:90px;right:-50px;bottom:-50px}
-  .tvt-bv .bv-hero:after{display:none}
-  .tvt-bv .bv-top{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:8px}
-  .tvt-bv .bv-head{display:block}
-  .tvt-bv .bv-logo,.tvt-bv .bv-div{display:none}
-  .tvt-bv h1.bv-title{font-size:21px}
-  .tvt-bv .bv-sub{font-size:13.5px;margin-top:8px}
-  .tvt-bv .bv-art{max-height:150px}
-  .tvt-bv .bv-feats{flex-wrap:nowrap;border-radius:40px;padding:12px 4px;margin-top:14px}
-  .tvt-bv .bv-feats li{flex:1;font-size:12px;padding:0 4px;border-right:1px solid var(--l)}
-  .tvt-bv .bv-feats li:nth-child(3){display:none}
-  .tvt-bv .bv-feats li:last-child{border-right:0}
-  .tvt-bv .bv-feats svg{width:28px;height:28px}
   .tvt-bv .bv-card{margin:12px 0 0;padding:18px 12px 20px;border-radius:16px}
   .tvt-bv .bv-sec{flex-wrap:nowrap;align-items:flex-start;gap:12px}
-  .tvt-bv .bv-sec h2{font-size:19px;gap:10px}
+  .tvt-bv .bv-sec h2{text-align:left;font-size:19px;gap:10px}
   .tvt-bv .bv-sec h2 svg{width:30px;height:30px}
   .tvt-bv .bv-sec{display:block}
   .tvt-bv .bv-sec p{font-size:13.5px;margin:4px 0 0 40px}
@@ -145,10 +104,10 @@
   .tvt-bv .bv-type small{font-size:12.5px;margin-top:3px}
   .tvt-bv .bv-type .ok{width:30px;height:30px;top:-9px;right:-6px}
   .tvt-bv .bv-type .ok svg{width:17px;height:17px}
-  .tvt-bv .bv-type[data-tur="uretici"]{grid-column:1/-1}
-  .tvt-bv .bv-type[data-tur="uretici"] .box{flex-direction:row;justify-content:center;text-align:left;gap:16px}
-  .tvt-bv .bv-type[data-tur="uretici"] .box svg{width:46px;height:46px;flex:none}
-  .tvt-bv .bv-type[data-tur="uretici"] b,.tvt-bv .bv-type[data-tur="uretici"] small{display:block}
+  .tvt-bv .bv-type.t-uretici{grid-column:1/-1}
+  .tvt-bv .bv-type.t-uretici .box{flex-direction:row;justify-content:center;text-align:left;gap:16px}
+  .tvt-bv .bv-type.t-uretici .box svg{width:46px;height:46px;flex:none}
+  .tvt-bv .bv-type.t-uretici b,.tvt-bv .bv-type.t-uretici small{display:block}
   .tvt-bv .bv-grid,.tvt-bv .bv-grid-2{grid-template-columns:1fr}
   .tvt-bv .bv-grid.bv-ortak{grid-template-columns:1fr 1fr;gap:0 10px}
   .tvt-bv .bv-ortak .bv-f.ep,.tvt-bv .bv-ortak .bv-f.sehir{grid-column:1/-1}
@@ -163,180 +122,118 @@
   .tvt-bv .bv-btn svg{width:26px;height:26px}
 }
 @media (max-width:360px){
-  .tvt-bv .bv-top{grid-template-columns:1fr}
-  .tvt-bv .bv-art{max-height:130px}
   .tvt-bv .bv-grid.bv-ortak{grid-template-columns:1fr}
   .tvt-bv .bv-ortak .bv-f.ep .bv-in,.tvt-bv .bv-ortak .bv-f.sehir .bv-in,.tvt-bv .bv-ortak .bv-f.wide .bv-in{padding-left:0}
 }
 </style>
 
 <div class="tvt-bv" id="tvt-basvuru">
-  <!-- ===== Üst alan: logo, başlık, depo ve kamyon görseli ===== -->
-  <section class="bv-hero">
-    <div class="bv-top">
-      <div>
-        <div class="bv-head">
-          <div class="bv-logo" aria-label="Toptan ve Toptan">
-            <svg class="mark" viewBox="0 0 56 34" aria-hidden="true"><path d="M4 4h48l-6 9H34l-4 18h-9l4-18H10z" fill="#FF7F00"/><path d="M30 13l-4 18h4l4-18z" fill="#E86F00"/></svg>
-            <span class="lg">toptan <span class="ve">ve</span> toptan<sup style="font-size:11px">®</sup></span>
-            <span class="tag">ENDÜSTRİYEL TOPTAN MARKET</span>
-          </div>
-          <div class="bv-div" aria-hidden="true"></div>
-          <div>
-            <h1 class="bv-title">İŞ ORTAKLIĞI VE <span>TALEP BAŞVURU FORMU</span></h1>
-            <p class="bv-sub">Toptan ve Toptan ailesine katılın, iş birliği, yatırım ve tedarik fırsatlarından size özel avantajlarla yararlanın.</p>
-          </div>
-        </div>
-      </div>
-      <svg class="bv-art" viewBox="0 0 620 300" role="img" aria-label="Toptan ve Toptan deposu ve kamyonu">
-        <defs>
-          <linearGradient id="tvtSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfdcee" stop-opacity="0"/><stop offset="1" stop-color="#f6d9b8" stop-opacity=".55"/></linearGradient>
-          <linearGradient id="tvtIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2f38"/><stop offset="1" stop-color="#5a4a36"/></linearGradient>
-          <linearGradient id="tvtFl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3e7ee"/><stop offset="1" stop-color="#c9d0db"/></linearGradient>
-        </defs>
-        <ellipse cx="330" cy="250" rx="320" ry="26" fill="url(#tvtFl)" opacity=".8"/>
-        <!-- depo -->
-        <polygon points="240,92 620,40 620,238 240,248" fill="#1c2230"/>
-        <polygon points="232,84 620,28 620,46 232,100" fill="#FF7F00"/>
-        <polygon points="240,100 620,46 620,58 240,110" fill="#2a3242"/>
-        <text x="420" y="88" transform="rotate(-8 420 88)" font-family="Roboto,Arial" font-weight="900" font-size="25" fill="#fff" text-anchor="middle">toptan <tspan fill="#FF7F00" font-size="17">ve</tspan> toptan</text>
-        <g>
-          <polygon points="262,140 368,130 368,242 262,245" fill="#FF7F00"/>
-          <polygon points="270,148 360,139 360,242 270,244" fill="url(#tvtIn)"/>
-          <polygon points="388,128 494,118 494,239 388,242" fill="#FF7F00"/>
-          <polygon points="396,136 486,127 486,239 396,241" fill="url(#tvtIn)"/>
-          <polygon points="514,116 612,106 612,236 514,239" fill="#FF7F00"/>
-          <polygon points="522,124 604,115 604,236 522,238" fill="url(#tvtIn)"/>
-          <g stroke="#ffe9b8" stroke-width="2" opacity=".8"><line x1="282" y1="158" x2="350" y2="151"/><line x1="408" y1="146" x2="476" y2="139"/><line x1="534" y1="133" x2="596" y2="127"/></g>
-          <g fill="#d9a46c" stroke="#a8743f" stroke-width="1"><rect x="300" y="208" width="26" height="22"/><rect x="326" y="208" width="26" height="22"/><rect x="312" y="186" width="26" height="22"/><rect x="420" y="204" width="28" height="24"/><rect x="448" y="204" width="28" height="24"/><rect x="434" y="180" width="28" height="24"/><rect x="540" y="204" width="26" height="22"/><rect x="566" y="204" width="26" height="22"/></g>
-        </g>
-        <!-- kamyon -->
-        <g>
-          <ellipse cx="190" cy="262" rx="190" ry="10" fill="#10264B" opacity=".12"/>
-          <rect x="128" y="128" width="236" height="104" rx="6" fill="#fff" stroke="#d5dbe4" stroke-width="2"/>
-          <rect x="128" y="222" width="236" height="10" fill="#e8ecf2"/>
-          <text x="246" y="186" font-family="Roboto,Arial" font-weight="900" font-size="25" fill="#10264B" text-anchor="middle">toptan <tspan fill="#FF7F00" font-size="17">ve</tspan> toptan</text>
-          <path d="M30 168c0-14 8-30 22-34l44-10c10-2 18 6 18 16v100H30z" fill="#FF7F00"/>
-          <path d="M44 150l46-10c6-1 10 3 10 9v26H40v-16c0-4 1-8 4-9z" fill="#2b3a52"/>
-          <rect x="106" y="138" width="22" height="96" fill="#E86F00"/>
-          <rect x="22" y="206" width="20" height="12" rx="3" fill="#ffe4a8"/>
-          <rect x="30" y="226" width="98" height="12" fill="#1c2230"/>
-          <rect x="34" y="194" width="62" height="8" rx="2" fill="#1c2230" opacity=".55"/>
-          <g fill="#1c2230"><circle cx="70" cy="244" r="17"/><circle cx="212" cy="244" r="17"/><circle cx="252" cy="244" r="17"/><circle cx="324" cy="244" r="17"/></g>
-          <g fill="#9aa4b2"><circle cx="70" cy="244" r="7"/><circle cx="212" cy="244" r="7"/><circle cx="252" cy="244" r="7"/><circle cx="324" cy="244" r="7"/></g>
-        </g>
-      </svg>
-    </div>
-    <ul class="bv-feats">
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12l4-4 4 2 3-2 3 1 6 3-3 3"/><path d="M6 8l-4 4 6 6 2-1"/><path d="M10 10l-3 3 5 5c1 1 2 1 3 0l4-4"/><path d="M12 15l2 2M14 13l2 2"/></svg>Güvenilir<br>İş Ortaklığı</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9M7.5 5.2l9 4.6"/></svg>6.000+<br>Ürün Çeşidi</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.4"/><path d="M10 16l6-6M10.5 11.5h.01M14.5 15.5h.01"/></svg>Özel<br>Teklifler</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h12v10H2zM14 9h4l4 4v3h-8"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg>Türkiye Geneli<br>Hızlı Sevkiyat</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/><path d="M19 20c0 1-2 2-5 2"/></svg>Kurumsal<br>Destek</li>
-    </ul>
-  </section>
-
   <!-- ===== Form kartı ===== -->
   <div class="bv-card">
-    <form class="contact-form" id="tvt-bv-form" action="" method="post" onsubmit="var f=this,el=f.elements,s=f.querySelector('input[name=subject]:checked'),L=[],E=null;if(el.tvt_web.value)return false;f.querySelectorAll('.bv-ek[data-ek='+s.parentNode.getAttribute('data-tur')+'] .bv-c').forEach(function(x){var v=x.value.trim(),m=x.parentNode.querySelector('.bv-msg');x.classList.remove('err');m.textContent='';if(x.getAttribute('data-req')?v.length>1?0:1:0){x.classList.add('err');m.textContent='Bu alanı doldurunuz.';E=E||x}if(v)L.push(x.getAttribute('data-label')+': '+v)});var t=el.phone.value.replace(/\D/g,'').replace(/^(90|0)/,''),pm=el.phone.parentNode.querySelector('.bv-msg');el.phone.classList.remove('err');pm.textContent='';if(!/^5\d{9}$/.test(t)){el.phone.classList.add('err');pm.textContent='Geçerli bir cep telefonu yazınız (örnek: 0532 123 45 67).';E=E||el.phone}if(E){E.scrollIntoView({block:'center'});E.focus();return false}el.phone.value='0'+t.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/,'$1 $2 $3 $4');el.message.value='BAŞVURU TÜRÜ: '+s.value+'\nAd Soyad: '+el.name.value.trim()+'\nTelefon: '+el.phone.value+'\nE-Posta: '+el.email.value.trim()+'\nŞehir: '+el.tvt_sehir.value+(L.length?'\n\n--- Ek Bilgiler ---\n'+L.join('\n'):'')+'\n\n--- Başvuru Detayı ---\n'+el.tvt_detay.value.trim()+'\n\n(KVKK onayı verildi)';return contactForm(f)">
+    <form class="contact-form" id="tvt-bv-form" action="" method="post" onsubmit="var f=this,el=f.elements,s=f.querySelector('input[name=subject]:checked'),L=[],E=null;if(el.tvt_web.value)return false;f.querySelectorAll('.bv-ek-'+s.id.slice(6)+' .bv-c').forEach(function(x){var v=x.value.trim(),m=x.parentNode.querySelector('.bv-msg');x.classList.remove('err');if(m)m.textContent='';if(x.classList.contains('zr')?v.length>1?0:1:0){x.classList.add('err');if(m)m.textContent='Bu alanı doldurunuz.';E=E||x}if(v)L.push(x.title+': '+v)});var t=el.phone.value.replace(/\D/g,'').replace(/^(90|0)/,''),pm=el.phone.parentNode.querySelector('.bv-msg');el.phone.classList.remove('err');if(pm)pm.textContent='';if(!/^5\d{9}$/.test(t)){el.phone.classList.add('err');if(pm)pm.textContent='Geçerli bir cep telefonu yazınız (örnek: 0532 123 45 67).';E=E||el.phone}if(E){E.scrollIntoView({block:'center'});E.focus();return false}el.phone.value='0'+t.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/,'$1 $2 $3 $4');el.message.value='BAŞVURU TÜRÜ: '+s.value+'\nAd Soyad: '+el.name.value.trim()+'\nTelefon: '+el.phone.value+'\nE-Posta: '+el.email.value.trim()+'\nŞehir: '+el.tvt_sehir.value+(L.length?'\n\n--- Ek Bilgiler ---\n'+L.join('\n'):'')+'\n\n--- Başvuru Detayı ---\n'+el.tvt_detay.value.trim()+'\n\n(KVKK onayı verildi)';return contactForm(f)">
+      <div class="bv-ust">
+        <h2>İŞ ORTAKLIĞI BAŞVURUSU</h2>
+        <p>İş ortaklığı başvurunuzu aşağıdaki formu doldurarak bize iletebilirsiniz.</p>
+        <div class="bv-banner"><img alt="İş Ortaklığı Banner" src="https://cdn.qukasoft.com/f/203427/bzR6WWFtNG0vcUp3ZW1Gc1U4OG5hUT09/i/6a7634fc66ee2-55596764-sw1600sh300.webp" /></div>
+      </div>
       <div class="bv-sec">
         <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 9h6M9 13h6M9 17h4"/></svg>Başvuru Türü Seçiniz <span class="req">*</span></h2>
         <p>Size uygun başvuru türünü seçerek formu doldurunuz.</p>
       </div>
 
-      <fieldset class="bv-types" aria-label="Başvuru türü">
-        <label class="bv-type" data-tur="dukkan">
+      <fieldset class="bv-types">
+        <label class="bv-type t-dukkan">
           <input type="radio" name="subject" id="tvt-t-dukkan" required value="Dükkan Açmak İstiyorum">
           <span class="box"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M6 18l4-10h28l4 10"/><path d="M6 18c0 3 2.5 5 5.5 5s5.5-2 5.5-5c0 3 2.5 5 5.5 5h3c3 0 5.5-2 5.5-5 0 3 2.5 5 5.5 5S42 21 42 18z"/><path d="M9 23v18h30V23M20 41V31h8v10"/><path d="M14 18l2-10M24 18V8M34 18l-2-10"/></svg>
             <span><b>Dükkan Açmak İstiyorum</b><small>Toptan iş modeliyle kendi işimi kurmak istiyorum.</small></span></span>
-          <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         </label>
-        <label class="bv-type" data-tur="cin">
+        <label class="bv-type t-cin">
           <input type="radio" name="subject" id="tvt-t-cin" value="Çin'den Mal Getirmek İstiyorum">
           <span class="box"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 30h40l-5 9H9z"/><path d="M10 30V22h28v8"/><path d="M14 22v-6h8v6M22 18h10v4M18 12v4"/><path d="M14 26h4M22 26h4M30 26h4"/><path d="M4 43c3 0 3-2 6-2s3 2 6 2 3-2 6-2 3 2 6 2 3-2 6-2 3 2 6 2"/></svg>
             <span><b>Çin'den Mal Getirmek İstiyorum</b><small>Çin tedarik süreci ve dış ticaret desteği almak istiyorum.</small></span></span>
-          <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         </label>
-        <label class="bv-type" data-tur="yatirimci">
+        <label class="bv-type t-yatirimci">
           <input type="radio" name="subject" id="tvt-t-yatirimci" value="Yatırımcı Olmak İstiyorum">
           <span class="box"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22l8-8 8 3 5-3 6 2 15 6-6 7"/><path d="M11 14L3 22l12 12 3-2"/><path d="M19 18l-6 6 10 10c2 2 4 2 6 0l8-8"/><path d="M24 30l4 4M28 26l4 4M32 22l4 4"/></svg>
             <span><b>Yatırımcı Olmak İstiyorum</b><small>Projelerimize yatırım yaparak iş ortağı olmak istiyorum.</small></span></span>
-          <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         </label>
-        <label class="bv-type" data-tur="teklif">
+        <label class="bv-type t-teklif">
           <input type="radio" name="subject" id="tvt-t-teklif" value="Özel Teklif Talebi">
           <span class="box"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l18-9 18 9v20l-18 9-18-9z"/><path d="M6 14l18 9 18-9M24 23v20M15 9.5l18 9v7"/></svg>
             <span><b>Özel Teklif Talebi</b><small>Belirli bir üründen yüksek miktarda alım yapmak istiyorum.</small></span></span>
-          <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         </label>
-        <label class="bv-type" data-tur="uretici">
+        <label class="bv-type t-uretici">
           <input type="radio" name="subject" id="tvt-t-uretici" value="Üreticiyim">
           <span class="box"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round"><path d="M5 42V24l10-6v6l10-6v6l10-6V6h7v36z"/><path d="M11 32h4M19 32h4M27 32h4M11 37h4M19 37h4M27 37h4" stroke-linecap="round"/></svg>
             <span><b>Üreticiyim</b><small>Kendi üretimimi toptan satış platformunuzda satmak istiyorum.</small></span></span>
-          <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         </label>
       </fieldset>
-      <span class="bv-msg" data-err="subject"></span>
+      <span class="bv-msg"></span>
       <p class="bv-hint">Başvuru türünü seçtiğinizde, o türe özel ek alanlar burada açılır.</p>
 
       <!-- ===== Türe göre ek alanlar ===== -->
-      <div class="bv-ek bv-ek-dukkan" data-ek="dukkan">
+      <div class="bv-ek bv-ek-dukkan">
         <h3><span>Dükkan Açmak İstiyorum</span> – Ek Bilgiler</h3>
         <div class="bv-grid bv-grid-2">
           <div class="bv-f"><label for="tvt-d1">Açılacak işletme / mağaza adı <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-d1" name="tvt_isletme_adi" data-label="Açılacak işletme / mağaza adı" data-req="1" maxlength="100" placeholder="Örn: Yıldız Ticaret"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-d1" name="tvt_isletme_adi" title="Açılacak işletme / mağaza adı" maxlength="100" placeholder="Örn: Yıldız Ticaret"><span class="bv-msg"></span></div>
           <div class="bv-f wide"><label for="tvt-d3">İşletme hakkında bilgi <span class="req">*</span></label>
-            <textarea class="bv-c" id="tvt-d3" name="tvt_isletme_bilgi" data-label="İşletme hakkında bilgi" data-req="1" maxlength="500" rows="3" placeholder="Mağaza büyüklüğü, satmayı düşündüğünüz ürün grupları, planladığınız açılış zamanı..."></textarea><span class="bv-msg"></span></div>
+            <textarea class="bv-c zr" id="tvt-d3" name="tvt_isletme_bilgi" title="İşletme hakkında bilgi" maxlength="500" rows="3" placeholder="Mağaza büyüklüğü, satmayı düşündüğünüz ürün grupları, planladığınız açılış zamanı..."></textarea><span class="bv-msg"></span></div>
         </div>
       </div>
 
-      <div class="bv-ek bv-ek-cin" data-ek="cin">
+      <div class="bv-ek bv-ek-cin">
         <h3><span>Çin'den Mal Getirmek İstiyorum</span> – Ek Bilgiler</h3>
         <div class="bv-grid">
           <div class="bv-f"><label for="tvt-c1">Getirilmek istenen ürün(ler) <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-c1" name="tvt_cin_urunler" data-label="Getirilmek istenen ürün(ler)" data-req="1" maxlength="200" placeholder="Örn: Mutfak gereçleri, oyuncak"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-c1" name="tvt_cin_urunler" title="Getirilmek istenen ürün(ler)" maxlength="200" placeholder="Örn: Mutfak gereçleri, oyuncak"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-c2">Tahmini miktar veya bütçe <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-c2" name="tvt_cin_miktar" data-label="Tahmini miktar veya bütçe" data-req="1" maxlength="100" placeholder="Örn: 1 konteyner / 20.000 adet"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-c2" name="tvt_cin_miktar" title="Tahmini miktar veya bütçe" maxlength="100" placeholder="Örn: 1 konteyner / 20.000 adet"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-c3">İthalat deneyiminiz <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-c3" name="tvt_cin_deneyim" data-label="İthalat deneyimi" data-req="1">
+            <select class="bv-c zr" id="tvt-c3" name="tvt_cin_deneyim" title="İthalat deneyimi">
               <option value="">Seçiniz</option><option>İlk kez getireceğim</option><option>Daha önce ithalat yaptım</option><option>Düzenli ithalat yapıyorum</option></select><span class="bv-msg"></span></div>
         </div>
       </div>
 
-      <div class="bv-ek bv-ek-yatirimci" data-ek="yatirimci">
+      <div class="bv-ek bv-ek-yatirimci">
         <h3><span>Yatırımcı Olmak İstiyorum</span> – Ek Bilgiler</h3>
         <div class="bv-grid bv-grid-2">
           <div class="bv-f"><label for="tvt-y1">Yatırım bütçesi <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-y1" name="tvt_yatirim_butce" data-label="Yatırım bütçesi" data-req="1">
+            <select class="bv-c zr" id="tvt-y1" name="tvt_yatirim_butce" title="Yatırım bütçesi">
               <option value="">Seçiniz</option><option>500.000 TL altı</option><option>500.000 – 1.000.000 TL</option><option>1.000.000 – 5.000.000 TL</option><option>5.000.000 TL üzeri</option></select><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-y2">İlgilendiğiniz alan <span class="req">*</span></label>
-            <select class="bv-c" id="tvt-y2" name="tvt_yatirim_alan" data-label="İlgilendiği alan" data-req="1">
+            <select class="bv-c zr" id="tvt-y2" name="tvt_yatirim_alan" title="İlgilendiği alan">
               <option value="">Seçiniz</option><option>Mağaza / bayilik</option><option>Depo ve lojistik</option><option>İthalat ve tedarik</option><option>Henüz karar vermedim</option></select><span class="bv-msg"></span></div>
         </div>
       </div>
 
-      <div class="bv-ek bv-ek-teklif" data-ek="teklif">
+      <div class="bv-ek bv-ek-teklif">
         <h3><span>Özel Teklif Talebi</span> – Ek Bilgiler</h3>
         <div class="bv-grid">
           <div class="bv-f"><label for="tvt-t1">Teklif istenen ürün <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-t1" name="tvt_teklif_urun" data-label="Teklif istenen ürün" data-req="1" maxlength="150" placeholder="Ürün adı, marka, model veya ürün kodu"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-t1" name="tvt_teklif_urun" title="Teklif istenen ürün" maxlength="150" placeholder="Ürün adı, marka, model veya ürün kodu"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-t2">Talep edilen miktar <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-t2" name="tvt_teklif_miktar" data-label="Talep edilen miktar" data-req="1" maxlength="60" placeholder="Örn: 500 koli"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-t2" name="tvt_teklif_miktar" title="Talep edilen miktar" maxlength="60" placeholder="Örn: 500 koli"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-t4">Ne zaman ihtiyacınız var?</label>
-            <select class="bv-c" id="tvt-t4" name="tvt_teklif_zaman" data-label="İhtiyaç zamanı">
+            <select class="bv-c" id="tvt-t4" name="tvt_teklif_zaman" title="İhtiyaç zamanı">
               <option value="">Seçiniz</option><option>Hemen</option><option>1 ay içinde</option><option>1–3 ay içinde</option><option>Belli değil</option></select><span class="bv-msg"></span></div>
         </div>
       </div>
 
-      <div class="bv-ek bv-ek-uretici" data-ek="uretici">
+      <div class="bv-ek bv-ek-uretici">
         <h3><span>Üreticiyim</span> – Ek Bilgiler</h3>
         <div class="bv-grid">
           <div class="bv-f"><label for="tvt-u1">Firma adı <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-u1" name="tvt_uretici_firma" data-label="Firma adı" data-req="1" maxlength="120" placeholder="Ticari unvanınız"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-u1" name="tvt_uretici_firma" title="Firma adı" maxlength="120" placeholder="Ticari unvanınız"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-u2">Ürettiğiniz ürün grubu <span class="req">*</span></label>
-            <input class="bv-c" id="tvt-u2" name="tvt_uretici_urun" data-label="Ürettiği ürün grubu" data-req="1" maxlength="150" placeholder="Örn: Plastik ev gereçleri"><span class="bv-msg"></span></div>
+            <input class="bv-c zr" id="tvt-u2" name="tvt_uretici_urun" title="Ürettiği ürün grubu" maxlength="150" placeholder="Örn: Plastik ev gereçleri"><span class="bv-msg"></span></div>
           <div class="bv-f"><label for="tvt-u3">Aylık üretim kapasitesi</label>
-            <input class="bv-c" id="tvt-u3" name="tvt_uretici_kapasite" data-label="Aylık üretim kapasitesi" maxlength="80" placeholder="Örn: 10.000 adet"><span class="bv-msg"></span></div>
+            <input class="bv-c" id="tvt-u3" name="tvt_uretici_kapasite" title="Aylık üretim kapasitesi" maxlength="80" placeholder="Örn: 10.000 adet"><span class="bv-msg"></span></div>
         </div>
       </div>
 
@@ -362,16 +259,16 @@
         </div>
         <div class="bv-f wide">
           <div class="bv-lab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 4h16v12H9l-5 4z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01" stroke-width="2.6" stroke-linecap="round"/></svg><label for="tvt-detay">Başvurunuz Hakkında Detay <span class="req">*</span></label></div>
-          <div class="bv-in"><div class="bv-ta"><textarea class="bv-c" id="tvt-detay" name="tvt_detay" required minlength="10" maxlength="1000" oninput="this.parentNode.querySelector('[data-count]').textContent=this.value.length" rows="4" placeholder="Talebiniz, planınız veya başvurunuz hakkında detaylı bilgi yazınız..."></textarea><span class="bv-count" aria-live="polite"><span data-count>0</span> / 1000</span></div><span class="bv-msg"></span></div>
+          <div class="bv-in"><div class="bv-ta"><textarea class="bv-c" id="tvt-detay" name="tvt_detay" required minlength="10" maxlength="1000" oninput="this.parentNode.querySelector('.bv-sayi').textContent=this.value.length" rows="4" placeholder="Talebiniz, planınız veya başvurunuz hakkında detaylı bilgi yazınız..."></textarea><span class="bv-count"><span class="bv-sayi">0</span> / 1000</span></div><span class="bv-msg"></span></div>
         </div>
       </div>
 
       <!-- Panele gidecek birleşik mesaj (otomatik doldurulur) -->
       <input type="hidden" name="message" value="">
-      <div class="bv-hp" aria-hidden="true"><input type="text" name="tvt_web" tabindex="-1" autocomplete="off"></div>
+      <div class="bv-hp"><input type="text" name="tvt_web" tabindex="-1" autocomplete="off"></div>
 
       <label class="bv-kvkk"><input type="checkbox" name="tvt_onay" value="1" required><span>Kişisel verilerimin başvurumun değerlendirilmesi ve benimle iletişime geçilmesi amacıyla işlenmesini kabul ediyorum. <a href="/gizlilik-sozlesmesi" target="_blank">Gizlilik Sözleşmesi</a> <span class="req">*</span></span></label>
-      <span class="bv-msg" data-err="onay"></span>
+      <span class="bv-msg"></span>
 
       <button type="submit" class="bv-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 2L2 10.5l7 2.5 2.5 7L22 2zM9.8 12.4l8.4-7.3-6.4 8.9-.9 3.5z"/></svg>BAŞVURUYU GÖNDER</button>
       <p class="bv-note">Başvurunuz ekibimize iletilir ve en kısa sürede sizinle iletişime geçilir.</p>
